@@ -4,6 +4,9 @@
 # (would cost real money and need an API key) — just verifies the
 # source compiles cleanly and the CLI is invokable.
 #
+# Uses npm because the committed lock file is package-lock.json.
+# Locally, pnpm works fine too — see README for either flow.
+#
 # If we add unit tests later, plug them in as a separate step.
 
 name: CI
@@ -20,25 +23,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
+          cache: npm
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Type-check
-        run: pnpm typecheck
+        run: npm run typecheck
 
       - name: CLI smoke (list + dry-run, no API calls)
         run: |
           # Should print the brief + model catalog without touching OpenRouter.
-          pnpm bench:list
+          npm run bench:list
           # Dry-run validates flag parsing + brief/model selection.
           # Uses a placeholder key — never actually calls OR because of --dry-run.
-          OPENROUTER_API_KEY=dry-run-only pnpm bench --dry-run --preset smoke --briefs healthcare-regulated-ai
+          OPENROUTER_API_KEY=dry-run-only npm run bench -- --dry-run --preset smoke --briefs healthcare-regulated-ai
