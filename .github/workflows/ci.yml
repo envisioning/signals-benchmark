@@ -1,0 +1,44 @@
+# CI for signals-benchmark.
+#
+# Runs on every push + PR. Doesn't execute the actual benchmark
+# (would cost real money and need an API key) — just verifies the
+# source compiles cleanly and the CLI is invokable.
+#
+# If we add unit tests later, plug them in as a separate step.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: CLI smoke (list + dry-run, no API calls)
+        run: |
+          # Should print the brief + model catalog without touching OpenRouter.
+          pnpm bench:list
+          # Dry-run validates flag parsing + brief/model selection.
+          # Uses a placeholder key — never actually calls OR because of --dry-run.
+          OPENROUTER_API_KEY=dry-run-only pnpm bench --dry-run --preset smoke --briefs healthcare-regulated-ai

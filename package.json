@@ -1,0 +1,45 @@
+{
+  "name": "@envisioning/signals-benchmark",
+  "version": "0.1.0",
+  "description": "Benchmark LLMs on their ability to generate good 'signals of change' — multi-sector briefs, web-grounded verification, four-axis scoring, ranked leaderboard.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/envisioning/signals-benchmark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/envisioning/signals-benchmark/issues"
+  },
+  "homepage": "https://github.com/envisioning/signals-benchmark#readme",
+  "author": "Envisioning <hi@envisioning.com> (https://envisioning.com)",
+  "keywords": [
+    "llm",
+    "benchmark",
+    "evaluation",
+    "openrouter",
+    "foresight",
+    "signals-of-change",
+    "model-comparison",
+    "ai-evaluation"
+  ],
+  "scripts": {
+    "bench": "node --experimental-strip-types --no-warnings src/cli.ts run",
+    "bench:resume": "node --experimental-strip-types --no-warnings src/cli.ts resume",
+    "bench:report": "node --experimental-strip-types --no-warnings src/cli.ts report",
+    "bench:list": "node --experimental-strip-types --no-warnings src/cli.ts list",
+    "bench:publish": "node --experimental-strip-types --no-warnings src/publish.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "p-map": "^7.0.4",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.3"
+  }
+}

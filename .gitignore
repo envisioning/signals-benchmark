@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Env (never commit secrets — see .env.example)
+.env
+.env.local
+.env.*.local
+
+# Runtime artifacts — gitignored on purpose:
+#   results/  : raw per-run outputs from the benchmark runner.
+#               Publish to consumer repo via `pnpm bench:publish`.
+#   cache/    : semantic-eval cache (hundreds of MB, regenerable).
+results/
+cache/
+
+# Logs
+*.log
+
+# Build artifacts (the optional web/ viewer is a Next.js subproject)
+.next/
+out/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/
