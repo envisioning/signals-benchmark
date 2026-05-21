@@ -23,6 +23,7 @@ export type BenchmarkModel = {
 export const MODELS: BenchmarkModel[] = [
   // ─── OpenAI ───
   { id: "openai/gpt-5.5-pro", vendor: "OpenAI", tier: "frontier" },
+  { id: "openai/gpt-5.5", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4-mini", vendor: "OpenAI", tier: "mid" },
   { id: "openai/gpt-4.1", vendor: "OpenAI", tier: "frontier" },
