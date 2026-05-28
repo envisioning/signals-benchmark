@@ -30,6 +30,7 @@ export const MODELS: BenchmarkModel[] = [
   { id: "openai/o4-mini", vendor: "OpenAI", tier: "mid" },
 
   // ─── Anthropic ───
+  { id: "anthropic/claude-opus-4.8", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-opus-4.7", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-opus-4.6", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-sonnet-4.6", vendor: "Anthropic", tier: "frontier" },
