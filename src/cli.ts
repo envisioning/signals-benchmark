@@ -432,8 +432,18 @@ async function cmdRun(args: Args) {
       )
     )
   }
+  // Coverage (and thus composite) is computed across the brief set handed
+  // to scoreModels. Generation/eval above are correctly scoped to the
+  // `--briefs` subset, but scoring must see the FULL cohort — otherwise a
+  // 1-brief `--into` run collapses coverage for every model in the
+  // re-rendered leaderboard. In --into mode the full set lives in
+  // meta.brief_ids (carried over from the existing run); reconstruct it the
+  // same way cmdReport does.
+  const scoringBriefs = intoExistingRun
+    ? BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
+    : briefs
   const scores = scoreModels({
-    briefs,
+    briefs: scoringBriefs,
     runs: allRuns,
     evaluations: allEvaluations,
   })

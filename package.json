@@ -32,7 +32,8 @@
     "bench:report": "node --experimental-strip-types --no-warnings src/cli.ts report",
     "bench:list": "node --experimental-strip-types --no-warnings src/cli.ts list",
     "bench:publish": "node --experimental-strip-types --no-warnings src/publish.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --no-warnings --test 'src/**/*.test.ts'"
   },
   "dependencies": {
     "p-map": "^7.0.4",
