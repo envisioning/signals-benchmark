@@ -6,7 +6,7 @@
  * this step — that would unfairly advantage web-grounded models on the
  * verifiability axis (which is exactly what the *judge* tests later).
  */
-import { openrouterChat, extractJson } from "./openrouter.ts"
+import { openrouterChat, vercelChat, extractJson } from "./openrouter.ts"
 import type { Brief, ModelRun, GeneratedSignal } from "./types.ts"
 
 const SIGNALS_RESPONSE_SCHEMA = {
@@ -71,6 +71,7 @@ CRITICAL:
 function isReasoningModel(model: string): boolean {
   return (
     /^openai\/o\d/.test(model) || // o1, o3, o4, ...
+    /^openai\/gpt-5\.[5-9]/.test(model) || // gpt-5.5/5.6+ reason internally, need the bigger token ceiling
     model.includes("deepseek-r1") ||
     model.includes("thinking") ||
     model.includes("reasoning") ||
@@ -94,18 +95,23 @@ export async function generateForBrief({
   apiKey,
   brief,
   model,
+  provider = "openrouter",
   timeoutMs,
 }: {
   apiKey: string
   brief: Brief
   model: string
+  provider?: "openrouter" | "vercel"
   timeoutMs?: number
 }): Promise<ModelRun> {
   const started = Date.now()
   const startedIso = new Date(started).toISOString()
 
+  // Vercel AI Gateway speaks the same ORChatOptions/ORResult contract as
+  // OpenRouter, so the only thing that changes per provider is the client.
+  const chat = provider === "vercel" ? vercelChat : openrouterChat
   const reasoning = isReasoningModel(model)
-  const result = await openrouterChat({
+  const result = await chat({
     apiKey,
     model,
     messages: [{ role: "user", content: buildPrompt(brief) }],
