@@ -40,3 +40,13 @@ export function requireKey(): string {
   }
   return key
 }
+
+/**
+ * Vercel AI Gateway key — only needed when the model cohort includes a
+ * `provider: "vercel"` model. Returns null when unset so the caller can
+ * decide whether the run actually requires it. Accepts Vercel's own env
+ * name (AI_GATEWAY_API_KEY) as an alias.
+ */
+export function getVercelKey(): string | null {
+  return process.env.VERCEL_AI_GATEWAY_KEY || process.env.AI_GATEWAY_API_KEY || null
+}

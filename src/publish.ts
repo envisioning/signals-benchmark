@@ -293,19 +293,17 @@ function main() {
   }
 
   const date = (args.date as string) || todayIso()
-  const destBenchDir = join(dest, "public", "benchmark")
+  const destBenchDir = join(dest, "apps", "website", "public", "benchmark")
   const overviewDest = join(destBenchDir, `${date}.json`)
   const detailDir = join(destBenchDir, date)
-  // The CURRENT_BENCHMARK_FILE constant moved to _shared.ts so client
-  // components could import it (they can't pull from a Server-Component
-  // page.tsx). Update there.
   const pagePath = join(
     dest,
+    "apps",
+    "website",
     "src",
-    "app",
-    "(public)",
+    "lib",
     "benchmark",
-    "_shared.ts"
+    "shared.ts"
   )
 
   if (!existsSync(destBenchDir)) {

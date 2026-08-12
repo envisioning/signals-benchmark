@@ -25,7 +25,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, unlinkSync } from "node:fs"
 import { resolve, join } from "node:path"
 import pc from "picocolors"
-import { loadEnv, requireKey } from "./env.ts"
+import { loadEnv, requireKey, getVercelKey } from "./env.ts"
 import {
   filterModels,
   DEFAULT_JUDGE_MODEL,
@@ -113,6 +113,22 @@ async function cmdRun(args: Args) {
         models.push({ id, vendor: "Unknown", tier: "mid" })
       }
     }
+  }
+
+  // Resolve the Vercel AI Gateway key up front if the cohort needs it,
+  // so we fail before spending anything on OpenRouter phase-1 calls.
+  const needsVercel = models.some((m) => m.provider === "vercel")
+  const vercelKey = needsVercel ? getVercelKey() : null
+  if (needsVercel && !vercelKey) {
+    const vercelModels = models.filter((m) => m.provider === "vercel").map((m) => m.id)
+    console.error(
+      pc.red(
+        `Cohort includes Vercel-only model(s): ${vercelModels.join(", ")}.\n` +
+          "Set VERCEL_AI_GATEWAY_KEY in .env (the OPENROUTER_API_KEY does not work against Vercel),\n" +
+          "or exclude them, e.g. --vendors OpenAI,Anthropic or an explicit --models list."
+      )
+    )
+    process.exit(1)
   }
 
   if (briefs.length === 0) {
@@ -255,7 +271,13 @@ async function cmdRun(args: Args) {
         done++
         return
       }
-      const run = await generateForBrief({ apiKey, brief, model: model.id })
+      const provider = model.provider ?? "openrouter"
+      const run = await generateForBrief({
+        apiKey: provider === "vercel" ? vercelKey! : apiKey,
+        brief,
+        model: model.id,
+        provider,
+      })
       runs.push(run)
       done++
       const status = run.error
@@ -410,8 +432,18 @@ async function cmdRun(args: Args) {
       )
     )
   }
+  // Coverage (and thus composite) is computed across the brief set handed
+  // to scoreModels. Generation/eval above are correctly scoped to the
+  // `--briefs` subset, but scoring must see the FULL cohort — otherwise a
+  // 1-brief `--into` run collapses coverage for every model in the
+  // re-rendered leaderboard. In --into mode the full set lives in
+  // meta.brief_ids (carried over from the existing run); reconstruct it the
+  // same way cmdReport does.
+  const scoringBriefs = intoExistingRun
+    ? BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
+    : briefs
   const scores = scoreModels({
-    briefs,
+    briefs: scoringBriefs,
     runs: allRuns,
     evaluations: allEvaluations,
   })
