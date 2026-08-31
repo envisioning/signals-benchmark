@@ -450,35 +450,63 @@ export function parseMonthAnswer(text: string): string | null {
 type ChatDeps = { apiKey: string; model: string; timeoutMs?: number }
 
 /**
- * Reasoning models burn output tokens before the visible answer, exactly
- * as in generation. These prompts want one letter, so the ceiling only
- * has to cover internal reasoning — but it has to cover it, or the
- * model returns an empty body and we score a refusal it never made.
+ * Starting token ceiling. Models that reason internally burn output
+ * tokens before the first visible character, and these prompts want one
+ * letter — so the ceiling has to cover thinking we can't see.
+ *
+ * The name-based guess is only a STARTING point. It is a heuristic over
+ * slugs and it silently fails on every model that reasons without saying
+ * so in its name: gemini-3.5-flash spent 382 tokens thinking against a
+ * 400 ceiling and returned the string `{"answer` on 169 of 215 questions,
+ * which scored as 169 refusals and left too few buckets to fit. The
+ * asker below detects that at runtime instead of trusting this.
  */
-function tokenCeiling(model: string): number {
+function startingCeiling(model: string): number {
   return isReasoningModel(model) ? 8000 : 400
 }
 
-async function askOnce(
-  { apiKey, model, timeoutMs }: ChatDeps,
-  prompt: string,
-  temperature: number
-) {
-  return openrouterChat({
-    apiKey,
-    model,
-    messages: [{ role: "user", content: prompt }],
-    responseFormat: {
-      type: "json_schema",
-      json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
-    },
-    temperature,
-    maxTokens: tokenCeiling(model),
-    reasoning: shouldPassReasoning(model)
-      ? { effort: "minimal", exclude: true }
-      : undefined,
-    timeoutMs: timeoutMs ?? (isReasoningModel(model) ? 180_000 : 90_000),
-  })
+/** Cut off by the ceiling rather than finished. */
+function wasTruncated(res: Awaited<ReturnType<typeof openrouterChat>>): boolean {
+  return res.success && res.raw?.choices?.[0]?.finish_reason === "length"
+}
+
+/**
+ * Per-model asker with an adaptive token ceiling.
+ *
+ * On the first truncation it raises the ceiling and retries, and keeps
+ * the raised ceiling for every later call to that model — so a cohort
+ * run pays for one extra call to discover a model reasons, not 215 of
+ * them. A response still truncated after the retry is reported as an
+ * error rather than a refusal: the model answered, we failed to let it.
+ */
+function makeAsker({ apiKey, model, timeoutMs }: ChatDeps) {
+  let ceiling = startingCeiling(model)
+  return async function ask(prompt: string, temperature: number) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await openrouterChat({
+        apiKey,
+        model,
+        messages: [{ role: "user", content: prompt }],
+        responseFormat: {
+          type: "json_schema",
+          json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
+        },
+        temperature,
+        maxTokens: ceiling,
+        reasoning: shouldPassReasoning(model)
+          ? { effort: "minimal", exclude: true }
+          : undefined,
+        timeoutMs: timeoutMs ?? (ceiling > 1000 ? 180_000 : 90_000),
+      })
+      if (!res.success || !wasTruncated(res)) return res
+      if (attempt === 0) ceiling = Math.max(ceiling * 8, 4000)
+    }
+    return {
+      success: false as const,
+      code: 500,
+      message: `truncated at ${ceiling} tokens (model reasons before answering)`,
+    }
+  }
 }
 
 export async function runQuizProbe({
@@ -505,6 +533,7 @@ export async function runQuizProbe({
   onProgress?: (done: number, total: number) => void
 }): Promise<{ probe: QuizProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
   let done = 0
   let capped = false
@@ -524,7 +553,7 @@ export async function runQuizProbe({
       }
       // Temperature 0: we want the model's modal belief, not a sample of
       // its uncertainty. Sampling noise would blur the decay curve.
-      const res = await askOnce({ apiKey, model }, quizPrompt(item, bank.n_options), 0)
+      const res = await ask(quizPrompt(item, bank.n_options), 0)
       done++
       onProgress?.(done, items.length)
       if (!res.success) {
@@ -596,6 +625,7 @@ export async function runSelfReportProbe({
   concurrency?: number
 }): Promise<{ probe: SelfReportProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
 
   async function series(prompts: string[]): Promise<SelfReportSeries> {
@@ -608,7 +638,7 @@ export async function runSelfReportProbe({
         // Temperature 1: here we DO want the distribution — the spread
         // across samples is what distinguishes a model that knows its
         // cutoff from one that is confabulating a plausible-looking date.
-        const res = await askOnce({ apiKey, model }, prompt, 1)
+        const res = await ask(prompt, 1)
         if (!res.success) return null
         cost += res.usage?.cost ?? 0
         return parseMonthAnswer(res.text)
@@ -646,6 +676,7 @@ export async function runIdentityProbe({
   concurrency?: number
 }): Promise<{ probe: IdentityProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
   const jobs = IDENTITY_PROMPTS.flatMap((p) =>
     Array.from({ length: samplesPerPhrasing }, () => p)
@@ -653,7 +684,7 @@ export async function runIdentityProbe({
   const results = await pMap(
     jobs,
     async (prompt) => {
-      const res = await askOnce({ apiKey, model }, prompt, 1)
+      const res = await ask(prompt, 1)
       if (!res.success) return null
       cost += res.usage?.cost ?? 0
       const raw = parseAnswerField(res.text) ?? res.text
