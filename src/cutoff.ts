@@ -64,16 +64,21 @@ export type QuizBucket = {
 export type CutoffEstimate = {
   /** Best single-month estimate, "YYYY-MM". */
   month: string
-  /** Interpolated day inside that month — the curve's midpoint crossing. */
+  /** First day of `month` — buckets are monthly, so this is not finer. */
   date: string
-  /** Bracketing buckets the crossing falls between. */
+  /** Range of splits that fit nearly as well as the best one. */
   lower: string
   upper: string
-  /** Mean accuracy over the plateau window, 0..1. */
+  /** Fitted accuracy before the change point, 0..1. */
   plateau: number
   /** 1 / n_options. */
   chance: number
-  /** Midpoint between plateau and chance — where we call the cutoff. */
+  /**
+   * Accuracy the curve actually decays to, from the newest buckets.
+   * Above `chance` when the quiz leaks recognisable-but-undated signal.
+   */
+  floor: number
+  /** Midpoint between the two fitted levels. */
   threshold: number
 }
 
@@ -150,48 +155,71 @@ export type CutoffReport = {
 // ── Estimator (pure — unit-tested in cutoff.test.ts) ──────────────────
 
 export const ESTIMATOR_DEFAULTS = {
-  /** Buckets averaged at the old end of the window to find the plateau. */
-  plateauWindow: 6,
-  /** Centered moving-average width. 1 disables smoothing. */
-  smoothing: 3,
-  /** Plateau must clear chance by this much for the curve to mean anything. */
+  /** Minimum buckets either side of the split, so a fit needs real support. */
+  minSegment: 3,
+  /** Fewer scored buckets than this and we don't try at all. */
+  minBuckets: 8,
+  /** The drop across the split must clear this to count as a decline. */
   minSignal: 0.15,
   /** Buckets below this many scored questions are dropped from the curve. */
   minBucketN: 2,
+  /** Splits within this fraction of the best fit form the reported bracket. */
+  bracketTolerance: 0.05,
 } as const
 
+type Fit = { index: number; sse: number; left: number; right: number }
+
+function weightedMean(values: number[], weights: number[]): number {
+  const w = weights.reduce((a, b) => a + b, 0)
+  if (w === 0) return 0
+  return values.reduce((a, v, i) => a + v * weights[i], 0) / w
+}
+
 /**
- * Centered moving average over a series with holes (`null`). Holes stay
- * holes; the window shrinks at the edges rather than wrapping. Smoothing
- * matters because monthly buckets are small (4-8 questions) and a single
- * lucky guess swings a raw bucket by 12-25 points.
+ * Best single step through the curve: the split that minimises weighted
+ * squared error either side. Weights are the bucket sizes, so a month
+ * that only scored two questions pulls proportionally less than one that
+ * scored six.
  */
-export function smoothSeries(
-  values: (number | null)[],
-  width = ESTIMATOR_DEFAULTS.smoothing
-): (number | null)[] {
-  if (width <= 1) return [...values]
-  const half = Math.floor(width / 2)
-  return values.map((v, i) => {
-    if (v === null) return null
-    const window: number[] = []
-    for (let j = i - half; j <= i + half; j++) {
-      const x = values[j]
-      if (j >= 0 && j < values.length && x !== null) window.push(x)
-    }
-    return window.reduce((a, b) => a + b, 0) / window.length
-  })
+function fitStep(values: number[], weights: number[], minSegment: number): Fit[] {
+  const fits: Fit[] = []
+  for (let k = minSegment; k <= values.length - minSegment; k++) {
+    const lv = values.slice(0, k)
+    const lw = weights.slice(0, k)
+    const rv = values.slice(k)
+    const rw = weights.slice(k)
+    const left = weightedMean(lv, lw)
+    const right = weightedMean(rv, rw)
+    const sse =
+      lv.reduce((a, v, i) => a + lw[i] * (v - left) ** 2, 0) +
+      rv.reduce((a, v, i) => a + rw[i] * (v - right) ** 2, 0)
+    fits.push({ index: k, sse, left, right })
+  }
+  return fits
 }
 
 /**
  * Read a cutoff off the accuracy curve.
  *
- * The curve runs high (the model knows this month) and falls to chance
- * (it's guessing). We take the *midpoint* of that fall, not its start or
- * end — the same choice the source method makes, and for the same two
- * reasons: models partially anticipate near-future events, and the last
- * few months before a cutoff are undersampled in training data, so
- * accuracy starts sagging before knowledge actually stops.
+ * The curve runs high while the model knows the month and drops once it
+ * doesn't. We locate that drop as a CHANGE POINT — the split minimising
+ * weighted squared error either side — rather than by walking the curve
+ * for a threshold crossing. Two reasons, both learned the expensive way
+ * on real data:
+ *
+ *   - The level after the drop is not chance. A quiz item leaks whenever
+ *     an option can be ruled out without knowing the month, and models
+ *     differ in how much they exploit that, so the floor is a property of
+ *     the measurement and has to be estimated, not assumed. gpt-4.1-mini
+ *     (documented cutoff 2024-06) answered 2025-2026 events at 54%
+ *     against 12.5% chance; a chance-anchored threshold dated it 2026-05.
+ *   - Monthly buckets are small, so single buckets swing wildly. A
+ *     crossing rule keys on individual points and latches onto late
+ *     noise; fitting two levels uses every bucket at once. On the same
+ *     data the change point lands at 2024-03 — three months early, which
+ *     is the direction the midpoint convention intends: training data
+ *     thins out before a cutoff and models partially anticipate what
+ *     comes next, so the observed drop precedes the true date.
  *
  * Returns null with a reason when the curve can't support an estimate —
  * an over-confident guess here would be worse than an honest gap.
@@ -204,83 +232,61 @@ export function estimateCutoff(
   const cfg = { ...ESTIMATOR_DEFAULTS, ...opts }
   const chance = 1 / nOptions
 
-  const ordered = [...buckets].sort(
-    (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month)
-  )
-  const usable = ordered.map((b) =>
-    b.accuracy !== null && b.n >= cfg.minBucketN ? b.accuracy : null
-  )
-  const scored = usable.filter((v) => v !== null).length
-  if (scored < cfg.plateauWindow + 2) return { estimate: null, reason: "too-few-buckets" }
-
-  const smoothed = smoothSeries(usable, cfg.smoothing)
-
-  // Plateau: the oldest `plateauWindow` buckets that actually scored.
-  const plateauValues: number[] = []
-  for (const v of smoothed) {
-    if (v === null) continue
-    plateauValues.push(v)
-    if (plateauValues.length === cfg.plateauWindow) break
+  const scored = [...buckets]
+    .sort((a, b) => monthOrdinal(a.month) - monthOrdinal(b.month))
+    .filter(
+      (b): b is QuizBucket & { accuracy: number } =>
+        b.accuracy !== null && b.n >= cfg.minBucketN
+    )
+  if (
+    scored.length < cfg.minBuckets ||
+    scored.length < cfg.minSegment * 2 + 1
+  ) {
+    return { estimate: null, reason: "too-few-buckets" }
   }
-  const plateau = plateauValues.reduce((a, b) => a + b, 0) / plateauValues.length
 
+  const values = scored.map((b) => b.accuracy)
+  const weights = scored.map((b) => b.n)
+  const fits = fitStep(values, weights, cfg.minSegment)
+  if (fits.length === 0) return { estimate: null, reason: "too-few-buckets" }
+
+  const best = fits.reduce((a, b) => (b.sse < a.sse ? b : a))
+  const plateau = best.left
+  const floor = best.right
+
+  // Never meaningfully above chance anywhere: nothing to date. Checked
+  // against chance, because this is "the model never knew this material",
+  // distinct from "it still knows it" below.
   if (plateau - chance < cfg.minSignal) return { estimate: null, reason: "no-signal" }
-  const threshold = (plateau + chance) / 2
-
-  // Indices of buckets that scored, so we can walk the curve ignoring holes.
-  const idx = smoothed.map((v, i) => (v === null ? -1 : i)).filter((i) => i >= 0)
-  const last = idx[idx.length - 1]
-  if ((smoothed[last] as number) >= threshold) {
-    // Still above threshold at the newest bucket: the cutoff is at or
-    // after the end of the window. Widen the window, don't guess.
+  // Both levels high: the model is still answering well at the newest
+  // month tested, so its cutoff is at or beyond the window.
+  if (plateau - floor < cfg.minSignal) {
     return { estimate: null, reason: "no-decline-in-window" }
   }
 
-  // Walk backwards for the LAST above→below crossing. Taking the last
-  // one (rather than the first) keeps a mid-window dip — a month that
-  // simply produced hard questions — from being mistaken for the cutoff.
-  for (let k = idx.length - 1; k > 0; k--) {
-    const hi = idx[k - 1]
-    const lo = idx[k]
-    const a = smoothed[hi] as number
-    const b = smoothed[lo] as number
-    if (a >= threshold && b < threshold) {
-      const span = a - b
-      const frac = span === 0 ? 0.5 : (a - threshold) / span
-      const loOrd = monthOrdinal(ordered[hi].month)
-      const hiOrd = monthOrdinal(ordered[lo].month)
-      // Buckets are anchored at mid-month; interpolate between anchors.
-      const exact = loOrd + frac * (hiOrd - loOrd)
-      const month = ordinalToMonth(Math.round(exact))
-      return {
-        estimate: {
-          month,
-          date: ordinalFractionToDate(exact),
-          lower: ordered[hi].month,
-          upper: ordered[lo].month,
-          plateau: round3(plateau),
-          chance: round3(chance),
-          threshold: round3(threshold),
-        },
-      }
-    }
-  }
-  return { estimate: null, reason: "below-threshold-throughout" }
-}
+  // Bracket: every split that fits nearly as well. A wide bracket is
+  // itself the finding — it means the decline is gradual or the buckets
+  // are too noisy to place it precisely.
+  const near = fits.filter(
+    (f) => f.sse <= best.sse * (1 + cfg.bracketTolerance) && f.left > f.right
+  )
+  const indices = near.length > 0 ? near.map((f) => f.index) : [best.index]
+  const loIdx = Math.max(0, Math.min(...indices) - 1)
+  const hiIdx = Math.min(scored.length - 1, Math.max(...indices))
 
-/**
- * Fractional month ordinal → ISO date, anchoring each bucket at the
- * 15th. 24303.5 is mid-way between the 15th of one month and the 15th
- * of the next, i.e. roughly the 1st of the later month.
- */
-function ordinalFractionToDate(exact: number): string {
-  const base = Math.floor(exact)
-  const frac = exact - base
-  const [y, m] = ordinalToMonth(base).split("-").map(Number)
-  const start = Date.UTC(y, m - 1, 15)
-  const next = Date.UTC(y, m, 15)
-  const t = start + frac * (next - start)
-  return new Date(t).toISOString().slice(0, 10)
+  const month = scored[best.index].month
+  return {
+    estimate: {
+      month,
+      date: `${month}-01`,
+      lower: scored[loIdx].month,
+      upper: scored[hiIdx].month,
+      plateau: round3(plateau),
+      chance: round3(chance),
+      floor: round3(floor),
+      threshold: round3((plateau + floor) / 2),
+    },
+  }
 }
 
 function round3(n: number): number {

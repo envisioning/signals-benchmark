@@ -14,6 +14,7 @@
  *   pnpm cutoff:build --no-verify                    (half the cost, more noise)
  *   pnpm cutoff:build --verifier <slug>              (default: gemini flash, grounded)
  *   pnpm cutoff:build --max-tokens 24000             (if a model reports truncation)
+ *   pnpm cutoff:build --top-up 4                     (revisit months holding < 4 items)
  *   pnpm cutoff:build --rebuild                      (ignore the existing bank)
  *   pnpm cutoff:build --dry-run
  *
@@ -127,9 +128,21 @@ type DraftItem = {
   source_title: string
 }
 
-function draftPrompt(month: string, count: number, nOptions: number): string {
+function draftPrompt(
+  month: string,
+  count: number,
+  nOptions: number,
+  avoid: string[] = []
+): string {
   const domains = DOMAINS.slice(0, count).join("; ")
+  const exclusion =
+    avoid.length === 0
+      ? ""
+      : `\nThe bank already covers these events for this month — pick DIFFERENT ones:\n${avoid
+          .map((a) => `  - ${a}`)
+          .join("\n")}\n`
   return `Search the web for notable events from ${monthLabel(month)}.
+${exclusion}
 
 Produce ${count} quiz items. Each item is one TRUE statement about something that
 actually happened in ${monthLabel(month)}, plus ${nOptions + 1} FALSE statements.
@@ -146,10 +159,23 @@ Rules for the TRUE statement:
   The result of a scheduled event is good; the fact that a scheduled event was
   scheduled is not.
 
-Rules for the FALSE statements:
-- Plausible but untrue. They must not describe anything that really happened at
-  any time, in any month — a distractor that is real elsewhere in the timeline
-  makes the item unscoreable.
+Rules for the FALSE statements (this is the part that decides whether the quiz
+measures anything):
+- EVERY named entity must be REAL and recognisable: real people, real
+  organisations, real missions, real products, real places. NEVER invent a name.
+  A reader who has never heard of "the Helioscope mission" can rule it out
+  without knowing what happened that month — that is recognition, not knowledge,
+  and it makes the whole item worthless. Reuse the real entities from the true
+  statement and its neighbours.
+- Build the falsehood by changing WHAT HAPPENED to real entities: flip the
+  outcome, swap which real party did it, change the direction or the magnitude,
+  pair two real entities that were not involved with each other. Never by
+  inventing who it happened to.
+- Each false statement must be something that could plausibly have been the
+  headline that month, and that a well-informed reader could not rule out
+  without actually knowing the month's news.
+- They must not describe anything that really happened at any time, in any
+  month — a distractor that is real elsewhere in the timeline is unscoreable.
 - Same domain, same register, same level of detail as the true one.
 
 Rules for ALL ${nOptions} statements in an item:
@@ -328,7 +354,19 @@ async function main() {
 
   const allMonths = monthRange(from, to)
   const have = new Set(existing?.items.map((it) => it.month) ?? [])
-  const todo = allMonths.filter((m) => !have.has(m))
+  const countFor = (m: string) =>
+    existing?.items.filter((it) => it.month === m).length ?? 0
+  /**
+   * --top-up <n> revisits months that came back THIN rather than only
+   * months that are missing. Selection is strict enough that a month can
+   * land with one or two items, and a bucket that small makes accuracy
+   * quantised (0/50/100%) — noise the curve then has to be smoothed
+   * through. Without this, topping up meant hand-editing the bank.
+   */
+  const topUpTo = args["top-up"] ? Number(args["top-up"]) : 0
+  const todo = allMonths.filter((m) =>
+    topUpTo > 0 ? countFor(m) < topUpTo : !have.has(m)
+  )
 
   const version =
     (args.version as string) ??
@@ -337,7 +375,13 @@ async function main() {
 
   console.log(pc.bold(pc.cyan("\ncutoff:build")))
   console.log(pc.dim(`  window:    ${from} … ${to} (${allMonths.length} months)`))
-  console.log(pc.dim(`  to draft:  ${todo.length} months × ${perMonth} items`))
+  console.log(
+    pc.dim(
+      topUpTo > 0
+        ? `  to top up: ${todo.length} months holding < ${topUpTo} items`
+        : `  to draft:  ${todo.length} months × ${perMonth} items`
+    )
+  )
   if (existing) {
     console.log(
       pc.dim(`  existing:  ${existing.items.length} items across ${have.size} months (kept)`)
@@ -368,8 +412,12 @@ async function main() {
    * earlier version drafted everything, then verified everything, then
    * wrote once at the end — a 40-minute run that lost the lot on Ctrl-C.
    */
-  async function buildMonth(month: string): Promise<{
-    items: QuizItem[]
+  async function buildMonth(
+    month: string,
+    want: number,
+    avoid: string[]
+  ): Promise<{
+    items: DraftItem[]
     drafted: number
     localDrops: number
     verifyDrops: number
@@ -378,7 +426,7 @@ async function main() {
     const res = await askJson({
       apiKey,
       model: builder,
-      messages: [{ role: "user", content: draftPrompt(month, perMonth, nOptions) }],
+      messages: [{ role: "user", content: draftPrompt(month, want, nOptions, avoid) }],
       responseFormat: {
         type: "json_schema",
         json_schema: { name: "quiz_items", strict: true, schema: DRAFT_SCHEMA },
@@ -453,25 +501,8 @@ async function main() {
       verifyDrops = verdicts.length - accepted.length
     }
 
-    const items = accepted.map((item, i) => {
-      const id = `${month}-${String(i).padStart(2, "0")}-${slug(item.fact)}`
-      const { options, answer } = shuffleOptions(
-        id,
-        item.fact.trim(),
-        item.distractors.map((d) => d.trim())
-      )
-      return {
-        id,
-        month,
-        domain: item.domain,
-        options,
-        answer,
-        source: { url: item.source_url, title: item.source_title },
-      }
-    })
-
     return {
-      items,
+      items: accepted,
       drafted: raw.length,
       localDrops: raw.length - passed.length,
       verifyDrops,
@@ -491,8 +522,32 @@ async function main() {
 
   // Months run concurrently, so serialise the read-modify-write.
   let flushing: Promise<void> = Promise.resolve()
-  function flush(items: QuizItem[]): Promise<void> {
+  /**
+   * Ids are assigned HERE rather than in buildMonth, because their index
+   * has to be relative to what the bank already holds for that month. A
+   * top-up that restarted numbering at 0 would collide with the existing
+   * items and fail validation — inside the flush, i.e. after the calls
+   * were paid for.
+   */
+  function flush(month: string, drafts: DraftItem[]): Promise<void> {
     flushing = flushing.then(() => {
+      const offset = bank.items.filter((it) => it.month === month).length
+      const items: QuizItem[] = drafts.map((d, i) => {
+        const id = `${month}-${String(offset + i).padStart(2, "0")}-${slug(d.fact)}`
+        const { options, answer } = shuffleOptions(
+          id,
+          d.fact.trim(),
+          d.distractors.map((x) => x.trim())
+        )
+        return {
+          id,
+          month,
+          domain: d.domain,
+          options,
+          answer,
+          source: { url: d.source_url, title: d.source_title },
+        }
+      })
       bank.items.push(...items)
       bank.items.sort(
         (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
@@ -516,10 +571,15 @@ async function main() {
   await pMap(
     todo,
     async (month) => {
-      const r = await buildMonth(month)
+      const held = bank.items.filter((it) => it.month === month)
+      const want = topUpTo > 0 ? Math.max(1, topUpTo - held.length) : perMonth
+      // Show the builder what this month already has so a top-up gets
+      // new events rather than paraphrases of the ones we banked.
+      const avoid = held.map((it) => it.options[it.answer])
+      const r = await buildMonth(month, want, avoid)
       // A month that yielded nothing leaves the file alone — no point
       // rewriting the bank to bump its timestamp.
-      if (r.items.length > 0) await flush(r.items)
+      if (r.items.length > 0) await flush(month, r.items)
       done++
       const elapsed = (Date.now() - startedAt) / 1000
       const eta = done === 0 ? 0 : (elapsed / done) * (todo.length - done)

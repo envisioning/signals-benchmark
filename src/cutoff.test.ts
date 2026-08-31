@@ -22,7 +22,6 @@ import {
   estimateCutoff,
   parseMonthAnswer,
   parseOptionLetter,
-  smoothSeries,
   type QuizAnswer,
   type QuizBucket,
 } from "./cutoff.ts"
@@ -159,14 +158,6 @@ test("estimate survives per-bucket noise", () => {
   )
 })
 
-test("smoothing keeps holes and shrinks the window at the edges", () => {
-  const s = smoothSeries([1, null, 0, 0.5], 3)
-  assert.equal(s[1], null)
-  assert.equal(s[0], 1) // only neighbour is a hole, so the value stands
-  assert.equal(s[2], 0.25) // mean(0, 0.5) — the hole at 1 is skipped, not zeroed
-  assert.equal(s[3], 0.25) // mean(0, 0.5) — no wrap-around past the edge
-})
-
 test("bucketing separates refusals and errors from wrong answers", () => {
   const answers: QuizAnswer[] = [
     { item_id: "a", month: "2025-01", picked: 0, correct: true },
@@ -263,4 +254,38 @@ test("distractor selection brackets the true statement by length", async () => {
   // Impossible bracket is rejected rather than shipped with the tell.
   const allLonger = [200, 210, 220, 230, 240, 250, 260].map((n) => "y".repeat(n))
   assert.ok("reject" in selectDistractors(fact, allLonger, 7))
+})
+
+test("a leaky quiz (floor above chance) is still dated correctly", () => {
+  // Real measurement that motivated the measured floor: gpt-4.1-mini,
+  // documented cutoff June 2024, answered events from 2025-2026 at 54%
+  // against a 12.5% chance rate, because distractors that invent entity
+  // names can be ruled out without knowing the month. Anchoring the
+  // threshold on chance never crosses such a curve and dates the model at
+  // the window edge.
+  const LEAK = 0.54
+  const series = Array.from({ length: 30 }, (_, i) => {
+    if (i <= 17) return 0.85
+    const t = Math.min(1, (i - 17) / 4)
+    return 0.85 + (LEAK - 0.85) * t
+  })
+  const { estimate, reason } = estimateCutoff(buckets("2023-01", series), N_OPTIONS)
+  assert.equal(reason, undefined)
+  assert.ok(estimate, "a leaky curve still has a readable decline")
+  assert.ok(estimate!.floor > estimate!.chance, "floor should be measured, not assumed")
+  const ord = monthOrdinal(estimate!.month)
+  assert.ok(
+    ord >= monthOrdinal("2024-07") && ord <= monthOrdinal("2024-10"),
+    `estimate ${estimate!.month} should sit at the decline, not the window edge`
+  )
+})
+
+test("a flat high curve is 'no decline', a flat chance curve is 'no signal'", () => {
+  const high = estimateCutoff(buckets("2023-01", Array(30).fill(0.85)), N_OPTIONS)
+  assert.equal(high.estimate, null)
+  assert.equal(high.reason, "no-decline-in-window")
+
+  const flat = estimateCutoff(buckets("2023-01", Array(30).fill(CHANCE + 0.02)), N_OPTIONS)
+  assert.equal(flat.estimate, null)
+  assert.equal(flat.reason, "no-signal")
 })
