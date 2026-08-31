@@ -705,6 +705,7 @@ async function cmdReport(args: Args) {
  *   --no-identity       skip the "what model are you" probe
  *   --refresh           re-probe models that already have a result file
  *   --concurrency <n>   questions in flight per model (default 6)
+ *   --max-cost-per-model <usd>  stop a model early if it gets expensive (default 2)
  */
 async function cmdCutoff(args: Args) {
   loadEnv()
@@ -791,6 +792,7 @@ async function cmdCutoff(args: Args) {
   const withSelfReport = !args["no-self-report"]
   const withIdentity = !args["no-identity"]
   const concurrency = Number(args.concurrency ?? 6)
+  const maxCostUsd = Number(args["max-cost-per-model"] ?? 2)
   const cutoffDir = join(runDir, "cutoff")
 
   console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
@@ -851,6 +853,7 @@ async function cmdCutoff(args: Args) {
       bank,
       items,
       concurrency,
+      maxCostUsd,
     })
     cost += quizCost
 
@@ -886,7 +889,10 @@ async function cmdCutoff(args: Args) {
       : pc.yellow(quiz.estimate_reason ?? "no estimate")
     const said = self_report?.cutoff.median ? pc.dim(` · says ${self_report.cutoff.median}`) : ""
     const refused = quiz.n_refused > 0 ? pc.dim(` · ${quiz.n_refused} unparsed`) : ""
-    console.log(`${est}${said}${refused}${pc.dim(` · $${cost.toFixed(4)}`)}`)
+    const capped = quiz.cost_capped
+      ? pc.yellow(` · CAPPED at $${maxCostUsd} after ${quiz.n_answered}/${quiz.n_questions}`)
+      : ""
+    console.log(`${est}${said}${refused}${capped}${pc.dim(` · $${cost.toFixed(4)}`)}`)
   }
 
   const usageAtEnd = await getKeyUsage(apiKey)

@@ -84,6 +84,12 @@ export type CutoffEstimate = {
 
 export type QuizProbe = {
   n_options: number
+  /**
+   * Set when the per-model cost cap stopped the probe early. The
+   * remaining questions were never asked, so the curve is partial and
+   * any estimate off it should be read as provisional.
+   */
+  cost_capped?: boolean
   buckets: QuizBucket[]
   n_questions: number
   n_answered: number
@@ -481,6 +487,7 @@ export async function runQuizProbe({
   bank,
   items,
   concurrency = 6,
+  maxCostUsd,
   onProgress,
 }: {
   apiKey: string
@@ -488,15 +495,33 @@ export async function runQuizProbe({
   bank: QuizBank
   items: QuizItem[]
   concurrency?: number
+  /**
+   * Stop asking once this model has cost this much. Per-call cost varies
+   * by ~50x across a cohort — a deep-research model runs a search pass
+   * per question, so 215 questions can cost more than the entire rest of
+   * the run. Without a cap, one slug in the cohort sets the budget.
+   */
+  maxCostUsd?: number
   onProgress?: (done: number, total: number) => void
 }): Promise<{ probe: QuizProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
   let cost = 0
   let done = 0
+  let capped = false
 
   const answers = await pMap(
     items,
     async (item): Promise<QuizAnswer> => {
+      if (maxCostUsd !== undefined && cost >= maxCostUsd) {
+        capped = true
+        return {
+          item_id: item.id,
+          month: item.month,
+          picked: null,
+          correct: false,
+          error: "cost cap reached",
+        }
+      }
       // Temperature 0: we want the model's modal belief, not a sample of
       // its uncertainty. Sampling noise would blur the decay curve.
       const res = await askOnce({ apiKey, model }, quizPrompt(item, bank.n_options), 0)
@@ -525,6 +550,7 @@ export async function runQuizProbe({
   return {
     probe: {
       n_options: bank.n_options,
+      ...(capped ? { cost_capped: true } : {}),
       buckets,
       n_questions: items.length,
       n_answered: nAnswered,
