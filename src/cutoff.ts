@@ -103,6 +103,7 @@ export type QuizProbe = {
 
 export type EstimateFailure =
   | "too-few-buckets"
+  | "too-many-failures"
   | "no-signal"
   | "no-decline-in-window"
   | "below-threshold-throughout"
@@ -482,30 +483,45 @@ function wasTruncated(res: Awaited<ReturnType<typeof openrouterChat>>): boolean 
 function makeAsker({ apiKey, model, timeoutMs }: ChatDeps) {
   let ceiling = startingCeiling(model)
   return async function ask(prompt: string, temperature: number) {
+    let lastFailure: Awaited<ReturnType<typeof openrouterChat>> | null = null
+    // Two escalation attempts (truncation) x three tries (transient
+    // failure). A cohort run drives 12 calls in flight against one key,
+    // and a rate limit or provider blip with no retry silently becomes a
+    // hole in the curve: deepseek-v4-pro came back with 158 errors out of
+    // 215 questions and still produced a confident-looking estimate.
     for (let attempt = 0; attempt < 2; attempt++) {
-      const res = await openrouterChat({
-        apiKey,
-        model,
-        messages: [{ role: "user", content: prompt }],
-        responseFormat: {
-          type: "json_schema",
-          json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
-        },
-        temperature,
-        maxTokens: ceiling,
-        reasoning: shouldPassReasoning(model)
-          ? { effort: "minimal", exclude: true }
-          : undefined,
-        timeoutMs: timeoutMs ?? (ceiling > 1000 ? 180_000 : 90_000),
-      })
-      if (!res.success || !wasTruncated(res)) return res
+      for (let tries = 0; tries < 3; tries++) {
+        if (tries > 0) await new Promise((r) => setTimeout(r, tries * 3000))
+        const res = await openrouterChat({
+          apiKey,
+          model,
+          messages: [{ role: "user", content: prompt }],
+          responseFormat: {
+            type: "json_schema",
+            json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
+          },
+          temperature,
+          maxTokens: ceiling,
+          reasoning: shouldPassReasoning(model)
+            ? { effort: "minimal", exclude: true }
+            : undefined,
+          timeoutMs: timeoutMs ?? (ceiling > 1000 ? 180_000 : 90_000),
+        })
+        if (res.success) {
+          if (!wasTruncated(res)) return res
+          break // truncated: escalate the ceiling rather than retrying as-is
+        }
+        lastFailure = res
+      }
       if (attempt === 0) ceiling = Math.max(ceiling * 8, 4000)
     }
-    return {
-      success: false as const,
-      code: 500,
-      message: `truncated at ${ceiling} tokens (model reasons before answering)`,
-    }
+    return (
+      lastFailure ?? {
+        success: false as const,
+        code: 500,
+        message: `truncated at ${ceiling} tokens (model reasons before answering)`,
+      }
+    )
   }
 }
 
@@ -574,7 +590,14 @@ export async function runQuizProbe({
   const buckets = bucketAnswers(answers)
   const nAnswered = buckets.reduce((a, b) => a + b.n, 0)
   const nCorrect = buckets.reduce((a, b) => a + b.correct, 0)
-  const { estimate, reason } = estimateCutoff(buckets, bank.n_options)
+  // A probe that mostly failed is not a curve. Fitting one anyway
+  // produces a plausible month off a handful of surviving buckets and
+  // nothing in the output says the model barely answered.
+  const answerRate = items.length === 0 ? 0 : nAnswered / items.length
+  const { estimate, reason } =
+    answerRate < 0.6
+      ? { estimate: null, reason: "too-many-failures" as const }
+      : estimateCutoff(buckets, bank.n_options)
 
   return {
     probe: {

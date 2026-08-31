@@ -706,6 +706,7 @@ async function cmdReport(args: Args) {
  *   --refresh           re-probe models that already have a result file
  *   --concurrency <n>   questions in flight per model (default 6)
  *   --max-cost-per-model <usd>  stop a model early if it gets expensive (default 2)
+ *   --model-timeout <min>       give up on a model that stalls (default 20)
  */
 async function cmdCutoff(args: Args) {
   loadEnv()
@@ -793,6 +794,7 @@ async function cmdCutoff(args: Args) {
   const withIdentity = !args["no-identity"]
   const concurrency = Number(args.concurrency ?? 6)
   const maxCostUsd = Number(args["max-cost-per-model"] ?? 2)
+  const modelTimeoutMs = Number(args["model-timeout"] ?? 20) * 60_000
   const cutoffDir = join(runDir, "cutoff")
 
   console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
@@ -845,16 +847,47 @@ async function cmdCutoff(args: Args) {
       }
     }
 
-    process.stdout.write(`  ${pc.cyan(model)} … `)
     let cost = 0
-    const { probe: quiz, cost: quizCost } = await runQuizProbe({
-      apiKey,
-      model,
-      bank,
-      items,
-      concurrency,
-      maxCostUsd,
-    })
+    // Per-question progress. A 215-question probe against a slow model
+    // is otherwise 15 minutes of silence, indistinguishable from a hang —
+    // which is exactly how the first cohort run looked.
+    const tick = (done: number, total: number) => {
+      if (done % 25 !== 0 && done !== total) return
+      process.stdout.write(`\r  ${pc.cyan(model)} … ${done}/${total}`.padEnd(60))
+    }
+    process.stdout.write(`  ${pc.cyan(model)} … `)
+
+    /**
+     * One model must not be able to hang a 34-model run. Whatever it has
+     * answered by the deadline is kept; the row is marked and the run
+     * moves on.
+     */
+    let timedOut = false
+    const deadline = new Promise<null>((resolve) =>
+      setTimeout(() => {
+        timedOut = true
+        resolve(null)
+      }, modelTimeoutMs).unref()
+    )
+    const quizResult = await Promise.race([
+      runQuizProbe({
+        apiKey,
+        model,
+        bank,
+        items,
+        concurrency,
+        maxCostUsd,
+        onProgress: tick,
+      }),
+      deadline,
+    ])
+    if (!quizResult) {
+      console.log(
+        `\r  ${pc.cyan(model)} … ${pc.red(`timed out after ${modelTimeoutMs / 60_000}m — skipped`)}`.padEnd(70)
+      )
+      continue
+    }
+    const { probe: quiz, cost: quizCost } = quizResult
     cost += quizCost
 
     let self_report: SelfReportProbe | undefined
@@ -892,7 +925,10 @@ async function cmdCutoff(args: Args) {
     const capped = quiz.cost_capped
       ? pc.yellow(` · CAPPED at $${maxCostUsd} after ${quiz.n_answered}/${quiz.n_questions}`)
       : ""
-    console.log(`${est}${said}${refused}${capped}${pc.dim(` · $${cost.toFixed(4)}`)}`)
+    process.stdout.write("\r".padEnd(1))
+    console.log(
+      `  ${pc.cyan(model)} … ${est}${said}${refused}${capped}${pc.dim(` · $${cost.toFixed(4)}`)}`.padEnd(70)
+    )
   }
 
   const usageAtEnd = await getKeyUsage(apiKey)
