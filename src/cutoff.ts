@@ -132,6 +132,14 @@ export type IdentityProbe = {
 export type ModelCutoff = {
   model: string
   probed_at: string
+  /**
+   * Which bank, and which distractor gap, this model actually answered.
+   * Recorded per model rather than per run because models are added to a
+   * report over time — a new model probed after the bank grew has not sat
+   * the same exam as the others, and comparing them would be wrong.
+   */
+  quiz_version: string
+  month_gap: number
   quiz: QuizProbe
   self_report?: SelfReportProbe
   identity?: IdentityProbe

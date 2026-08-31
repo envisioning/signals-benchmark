@@ -818,9 +818,24 @@ async function cmdCutoff(args: Args) {
     const path = join(cutoffDir, `${model.replace(/\//g, "_")}.json`)
     if (!args.refresh && existsSync(path)) {
       try {
-        results.push(JSON.parse(readFileSync(path, "utf-8")) as ModelCutoff)
-        console.log(pc.dim(`  ${model} — reused`))
-        continue
+        const prior = JSON.parse(readFileSync(path, "utf-8")) as ModelCutoff
+        // Only reuse a result that sat the SAME exam. Adding months to
+        // the bank changes every item — a question's wrong answers are
+        // drawn from the whole event pool — so a row probed against an
+        // older bank is not comparable with a fresh one, and silently
+        // mixing them would put two different measurements in one chart.
+        const sameQuiz =
+          prior.quiz_version === bank.version && prior.month_gap === monthGap
+        if (sameQuiz) {
+          results.push(prior)
+          console.log(pc.dim(`  ${model} — reused`))
+          continue
+        }
+        console.log(
+          pc.yellow(
+            `  ${model} — re-probing: answered quiz ${prior.quiz_version}/gap ${prior.month_gap}, current is ${bank.version}/gap ${monthGap}`
+          )
+        )
       } catch {
         /* corrupt file → re-probe */
       }
@@ -853,6 +868,8 @@ async function cmdCutoff(args: Args) {
     const row: ModelCutoff = {
       model,
       probed_at: new Date().toISOString(),
+      quiz_version: bank.version,
+      month_gap: monthGap,
       quiz,
       ...(self_report ? { self_report } : {}),
       ...(identity ? { identity } : {}),
@@ -884,6 +901,15 @@ async function cmdCutoff(args: Args) {
       ? { billed_actual_usd: Math.max(0, usageAtEnd - usageAtStart) }
       : {}),
   }
+  const mixed = [...new Set(results.map((r) => `${r.quiz_version}/${r.month_gap}`))]
+  if (mixed.length > 1) {
+    console.log(
+      pc.yellow(
+        `  ⚠ report mixes quizzes (${mixed.join(", ")}) — rows are not comparable. Re-run with --refresh.`
+      )
+    )
+  }
+
   const outPath = join(runDir, "cutoff.json")
   writeFileSync(outPath, JSON.stringify(report, null, 2))
 
