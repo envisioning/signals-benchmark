@@ -217,3 +217,50 @@ test("month range is inclusive and ordered", () => {
   assert.deepEqual(monthRange("2025-11", "2026-02"), ["2025-11", "2025-12", "2026-01", "2026-02"])
   assert.deepEqual(monthRange("2026-02", "2025-11"), [])
 })
+
+test("an empty bank is structurally valid but not loadable", async () => {
+  // `cutoff:build` validates after every month it writes, and the first
+  // month can legitimately yield nothing. Failing validation there aborted
+  // the whole build — after paying for the calls.
+  const { validateBank, loadQuizBank, QuizBankError } = await import("./cutoff-quiz.ts")
+  const empty = {
+    version: "t",
+    built_at: "2026-08-31T00:00:00Z",
+    builder_model: "m",
+    n_options: 8,
+    months: [],
+    items: [],
+  }
+  assert.doesNotThrow(() => validateBank(empty))
+
+  const { mkdtempSync, writeFileSync } = await import("node:fs")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const path = join(mkdtempSync(join(tmpdir(), "quiz-")), "bank.json")
+  writeFileSync(path, JSON.stringify(empty))
+  assert.throws(() => loadQuizBank(path), (e: unknown) => {
+    assert.ok(e instanceof QuizBankError)
+    assert.match((e as Error).message, /no items/)
+    return true
+  })
+})
+
+test("distractor selection brackets the true statement by length", async () => {
+  // Length is the tell that shows up in practice: a real event is stated
+  // plainly, an invented one gets embellished. If the true option is the
+  // longest, "pick the longest" beats guessing and every model's plateau
+  // — and so every estimated cutoff — moves.
+  const { selectDistractors } = await import("./build-quiz.ts")
+  const fact = "x".repeat(150)
+  const distractors = [160, 170, 180, 190, 200, 140, 130, 120, 110].map((n) => "y".repeat(n))
+  const picked = selectDistractors(fact, distractors, 7)
+  assert.ok("chosen" in picked)
+  const lens = picked.chosen.map((d) => d.length)
+  assert.equal(picked.chosen.length, 7)
+  assert.ok(Math.max(...lens) > fact.length, "needs a longer distractor")
+  assert.ok(Math.min(...lens) < fact.length, "needs a shorter distractor")
+
+  // Impossible bracket is rejected rather than shipped with the tell.
+  const allLonger = [200, 210, 220, 230, 240, 250, 260].map((n) => "y".repeat(n))
+  assert.ok("reject" in selectDistractors(fact, allLonger, 7))
+})

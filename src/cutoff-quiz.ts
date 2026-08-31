@@ -173,6 +173,13 @@ export function loadQuizBank(path = DEFAULT_BANK_PATH): QuizBank {
     throw new QuizBankError(`Quiz bank at ${abs} is not valid JSON: ${e?.message ?? e}`)
   }
   validateBank(bank)
+  if (bank.items.length === 0) {
+    throw new QuizBankError(
+      `Quiz bank at ${abs} has no items.\n` +
+        `Every draft was rejected, or the build failed before writing any month.\n` +
+        `Re-run: pnpm cutoff:build --from <YYYY-MM>`
+    )
+  }
   return bank
 }
 
@@ -187,7 +194,12 @@ export function validateBank(bank: QuizBank): void {
   if (bank.n_options < 2 || bank.n_options > OPTION_LETTERS.length) {
     fail(`n_options must be 2..${OPTION_LETTERS.length}, got ${bank.n_options}`)
   }
-  if (!Array.isArray(bank.items) || bank.items.length === 0) fail("no items")
+  // Emptiness is NOT a structural error: `cutoff:build` validates the
+  // bank after every month it writes, and the first month can legitimately
+  // yield nothing (every draft rejected). Refusing an empty bank here
+  // aborted the whole build on that path. Usability is checked in
+  // loadQuizBank instead, where an empty bank actually is a problem.
+  if (!Array.isArray(bank.items)) fail("items must be an array")
 
   const seen = new Set<string>()
   for (const [i, it] of bank.items.entries()) {
@@ -210,6 +222,96 @@ export function validateBank(bank: QuizBank): void {
 export function itemsForMonths(bank: QuizBank, months: string[]): QuizItem[] {
   const want = new Set(months)
   return bank.items.filter((it) => want.has(it.month))
+}
+
+// ── Audit ────────────────────────────────────────────────────────────
+
+export type BankAudit = {
+  n_items: number
+  n_months: number
+  /** Share of items whose true option is the shortest of the set. */
+  shortest_rate: number
+  /** Share whose true option is the longest. */
+  longest_rate: number
+  /** Answer-position counts, index 0..n_options-1. */
+  position_counts: number[]
+  /** Largest deviation of any position's share from uniform. */
+  position_bias: number
+  /** Items per month, ascending by month. */
+  per_month: { month: string; n: number }[]
+  warnings: string[]
+}
+
+/**
+ * Look for the tells that would let a model score above chance WITHOUT
+ * knowing what happened — the failure mode that quietly inflates every
+ * model's plateau and pushes every estimated cutoff later.
+ *
+ * The one that shows up in practice is length: a real event gets stated
+ * plainly while invented ones get embellished, so "pick the shortest"
+ * becomes a winning strategy. Chance is 1/n_options; anything much above
+ * that is a bank problem, not a model result.
+ */
+export function auditBank(bank: QuizBank): BankAudit {
+  const n = bank.items.length
+  const chance = 1 / bank.n_options
+  let shortest = 0
+  let longest = 0
+  const positions = new Array<number>(bank.n_options).fill(0)
+
+  for (const it of bank.items) {
+    const lens = it.options.map((o) => o.length)
+    const answerLen = lens[it.answer]
+    if (answerLen === Math.min(...lens)) shortest++
+    if (answerLen === Math.max(...lens)) longest++
+    positions[it.answer]++
+  }
+
+  const shortest_rate = n === 0 ? 0 : shortest / n
+  const longest_rate = n === 0 ? 0 : longest / n
+  const position_bias =
+    n === 0 ? 0 : Math.max(...positions.map((c) => Math.abs(c / n - chance)))
+
+  const perMonthMap = new Map<string, number>()
+  for (const it of bank.items) {
+    perMonthMap.set(it.month, (perMonthMap.get(it.month) ?? 0) + 1)
+  }
+  const per_month = [...perMonthMap.entries()]
+    .map(([month, count]) => ({ month, n: count }))
+    .sort((a, b) => monthOrdinal(a.month) - monthOrdinal(b.month))
+
+  const warnings: string[] = []
+  // 2x chance is the line: below it, a length heuristic buys a model
+  // less than a coin flip's worth of edge over the window.
+  if (n >= 20 && shortest_rate > chance * 2) {
+    warnings.push(
+      `true answer is the shortest option in ${pct(shortest_rate)} of items (chance ${pct(chance)}) — "pick the shortest" beats guessing`
+    )
+  }
+  if (n >= 20 && longest_rate > chance * 2) {
+    warnings.push(
+      `true answer is the longest option in ${pct(longest_rate)} of items (chance ${pct(chance)})`
+    )
+  }
+  if (n >= 40 && position_bias > chance) {
+    warnings.push(
+      `answer positions are uneven (worst slot deviates ${pct(position_bias)} from uniform)`
+    )
+  }
+  return {
+    n_items: n,
+    n_months: per_month.length,
+    shortest_rate,
+    longest_rate,
+    position_counts: positions,
+    position_bias,
+    per_month,
+    warnings,
+  }
+}
+
+function pct(x: number): string {
+  return `${Math.round(x * 100)}%`
 }
 
 /** Distinct months present in `items`, ascending. */

@@ -12,6 +12,8 @@
  *   pnpm cutoff:build --from 2023-01                 (to = last complete month)
  *   pnpm cutoff:build --from 2023-01 --per-month 6
  *   pnpm cutoff:build --no-verify                    (half the cost, more noise)
+ *   pnpm cutoff:build --verifier <slug>              (default: gemini flash, grounded)
+ *   pnpm cutoff:build --max-tokens 24000             (if a model reports truncation)
  *   pnpm cutoff:build --rebuild                      (ignore the existing bank)
  *   pnpm cutoff:build --dry-run
  *
@@ -51,6 +53,7 @@ import {
   monthLabel,
   monthOrdinal,
   monthRange,
+  auditBank,
   shuffleOptions,
   validateBank,
   type QuizBank,
@@ -58,7 +61,13 @@ import {
 } from "./cutoff-quiz.ts"
 
 const DEFAULT_BUILDER = "openai/gpt-5.4:online"
-const DEFAULT_VERIFIER = "google/gemini-2.5-pro:online"
+/**
+ * Grounded, cheap, and reliable at short JSON — the same reasoning
+ * behind the eval pipeline's default judge. Gemini 2.5 *Pro* reasons
+ * internally and spends 1.5k+ tokens before the first visible character,
+ * which costs 5x more per item for a two-boolean answer.
+ */
+const DEFAULT_VERIFIER = "google/gemini-2.5-flash:online"
 const DEFAULT_PER_MONTH = 5
 const DEFAULT_N_OPTIONS = 8
 
@@ -123,7 +132,9 @@ function draftPrompt(month: string, count: number, nOptions: number): string {
   return `Search the web for notable events from ${monthLabel(month)}.
 
 Produce ${count} quiz items. Each item is one TRUE statement about something that
-actually happened in ${monthLabel(month)}, plus ${nOptions - 1} FALSE statements.
+actually happened in ${monthLabel(month)}, plus ${nOptions + 1} FALSE statements.
+(That is more false statements than the quiz uses — extras are selected from, so
+write all of them to the same standard.)
 
 Spread the items across these domains, one each where possible: ${domains}.
 
@@ -151,7 +162,7 @@ Rules for ALL ${nOptions} statements in an item:
 
 Respond ONLY with JSON:
 {"items":[{"fact":"...","distractors":["...", "..."],"domain":"...","source_url":"https://...","source_title":"..."}]}
-Each item needs exactly ${nOptions - 1} distractors.`
+Each item needs at least ${nOptions + 1} distractors.`
 }
 
 function verifyPrompt(month: string, item: DraftItem): string {
@@ -187,8 +198,8 @@ const DATE_LEAK_RE =
  */
 function localReject(item: DraftItem, nOptions: number): string | null {
   if (!item.fact?.trim()) return "empty fact"
-  if (!Array.isArray(item.distractors) || item.distractors.length !== nOptions - 1) {
-    return `expected ${nOptions - 1} distractors, got ${item.distractors?.length ?? 0}`
+  if (!Array.isArray(item.distractors) || item.distractors.length < nOptions - 1) {
+    return `expected at least ${nOptions - 1} distractors, got ${item.distractors?.length ?? 0}`
   }
   const all = [item.fact, ...item.distractors].map((s) => s.trim())
   if (all.some((s) => !s)) return "empty option"
@@ -197,12 +208,53 @@ function localReject(item: DraftItem, nOptions: number): string | null {
     const leak = s.match(DATE_LEAK_RE)
     if (leak) return `date leak in option: "${leak[0]}"`
   }
-  const lens = item.distractors.map((d) => d.trim().length).sort((a, b) => a - b)
-  const median = lens[Math.floor(lens.length / 2)]
-  const ratio = item.fact.trim().length / Math.max(1, median)
-  if (ratio > 1.6 || ratio < 0.6) return `fact length outlier (${ratio.toFixed(2)}x median)`
   if (!/^https?:\/\//.test(item.source_url ?? "")) return "missing source url"
   return null
+}
+
+/**
+ * Choose which distractors actually ship, so the true statement is never
+ * the longest or shortest of the set.
+ *
+ * Length is the tell that shows up in practice: a real event gets stated
+ * plainly, an invented one gets embellished. On a first pilot the true
+ * answer was the longest option in 35% of items against a 13% chance
+ * rate — enough for "pick the longest" to beat guessing, which would
+ * inflate every model's plateau and push every estimated cutoff later.
+ *
+ * The builder is asked for MORE distractors than the quiz needs, so this
+ * is a selection problem rather than a rejection problem: keep one
+ * distractor longer than the fact and one shorter (bracketing it), then
+ * fill the rest with whichever are closest to it in length. Nothing is
+ * thrown away that we already paid for unless the bracket is impossible.
+ */
+export function selectDistractors(
+  fact: string,
+  distractors: string[],
+  need: number
+): { chosen: string[] } | { reject: string } {
+  const factLen = fact.length
+  const longer = distractors
+    .filter((d) => d.length > factLen)
+    .sort((a, b) => a.length - b.length)
+  const shorter = distractors
+    .filter((d) => d.length < factLen)
+    .sort((a, b) => b.length - a.length)
+  if (longer.length === 0) return { reject: "no distractor longer than the fact" }
+  if (shorter.length === 0) return { reject: "no distractor shorter than the fact" }
+
+  const chosen = [longer[0], shorter[0]]
+  const rest = distractors
+    .filter((d) => !chosen.includes(d))
+    .sort((a, b) => Math.abs(a.length - factLen) - Math.abs(b.length - factLen))
+  for (const d of rest) {
+    if (chosen.length >= need) break
+    chosen.push(d)
+  }
+  if (chosen.length < need) {
+    return { reject: `only ${chosen.length} usable distractors, need ${need}` }
+  }
+  return { chosen: chosen.slice(0, need) }
 }
 
 // ── Arg parsing ──────────────────────────────────────────────────────
@@ -239,6 +291,13 @@ async function main() {
   const verifier = (args.verifier as string) ?? DEFAULT_VERIFIER
   const verify = !args["no-verify"]
   const concurrency = Number(args.concurrency ?? 6)
+  /**
+   * Generous by default. These are per-month one-off calls, and the
+   * failure mode of a low ceiling (truncated JSON, whole month lost,
+   * money already spent) is far worse than a few unused tokens — models
+   * are billed for what they emit, not for the ceiling.
+   */
+  const maxTokens = Number(args["max-tokens"] ?? 16_000)
   const to = (args.to as string) ?? lastCompleteMonth()
   const from = (args.from as string) ?? defaultFrom(to)
 
@@ -316,36 +375,23 @@ async function main() {
     verifyDrops: number
     error?: string
   }> {
-    const res = await withRetry(() =>
-      openrouterChat({
-        apiKey,
-        model: builder,
-        messages: [{ role: "user", content: draftPrompt(month, perMonth, nOptions) }],
-        responseFormat: {
-          type: "json_schema",
-          json_schema: { name: "quiz_items", strict: true, schema: DRAFT_SCHEMA },
-        },
-        temperature: 0.4,
-        maxTokens: 8000,
-        webSearch: true,
-        timeoutMs: 150_000,
-      })
-    )
-    if (!res.success) {
-      return { items: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.message }
+    const res = await askJson({
+      apiKey,
+      model: builder,
+      messages: [{ role: "user", content: draftPrompt(month, perMonth, nOptions) }],
+      responseFormat: {
+        type: "json_schema",
+        json_schema: { name: "quiz_items", strict: true, schema: DRAFT_SCHEMA },
+      },
+      temperature: 0.4,
+      maxTokens,
+      webSearch: true,
+      timeoutMs: 150_000,
+    })
+    if (!res.ok) {
+      return { items: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.error }
     }
-    let raw: DraftItem[] = []
-    try {
-      raw = (extractJson(res.text)?.items ?? []) as DraftItem[]
-    } catch {
-      return {
-        items: [],
-        drafted: 0,
-        localDrops: 0,
-        verifyDrops: 0,
-        error: "unparseable draft",
-      }
-    }
+    const raw = (res.value?.items ?? []) as DraftItem[]
 
     // Free gates first — never pay a verifier to look at an item we can
     // already tell is unusable.
@@ -356,7 +402,18 @@ async function main() {
         console.log(pc.dim(`      drop ${month}: ${why}`))
         continue
       }
-      passed.push(item)
+      // Trim the surplus down to the shipping set here, so the verifier
+      // only ever sees the statements that will actually appear.
+      const picked = selectDistractors(
+        item.fact.trim(),
+        item.distractors.map((d) => d.trim()),
+        nOptions - 1
+      )
+      if ("reject" in picked) {
+        console.log(pc.dim(`      drop ${month}: ${picked.reject}`))
+        continue
+      }
+      passed.push({ ...item, distractors: picked.chosen })
     }
 
     let accepted = passed
@@ -365,31 +422,26 @@ async function main() {
       const verdicts = await pMap(
         passed,
         async (item) => {
-          const v = await withRetry(() =>
-            openrouterChat({
-              apiKey,
-              model: verifier,
-              messages: [{ role: "user", content: verifyPrompt(month, item) }],
-              responseFormat: {
-                type: "json_schema",
-                json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
-              },
-              temperature: 0,
-              maxTokens: 1500,
-              webSearch: true,
-              timeoutMs: 150_000,
-            })
-          )
-          if (!v.success) return { item, ok: false, reason: `verifier error: ${v.message}` }
-          try {
-            const parsed = extractJson(v.text)
-            return {
-              item,
-              ok: parsed?.fact_confirmed === true && parsed?.any_distractor_real === false,
-              reason: String(parsed?.reason ?? ""),
-            }
-          } catch {
-            return { item, ok: false, reason: "unparseable verdict" }
+          const v = await askJson({
+            apiKey,
+            model: verifier,
+            messages: [{ role: "user", content: verifyPrompt(month, item) }],
+            responseFormat: {
+              type: "json_schema",
+              json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
+            },
+            temperature: 0,
+            maxTokens,
+            webSearch: true,
+            timeoutMs: 150_000,
+          })
+          if (!v.ok) return { item, ok: false, reason: `verifier: ${v.error}` }
+          return {
+            item,
+            ok:
+              v.value?.fact_confirmed === true &&
+              v.value?.any_distractor_real === false,
+            reason: String(v.value?.reason ?? ""),
           }
         },
         { concurrency: Math.min(perMonth, 5) }
@@ -465,7 +517,9 @@ async function main() {
     todo,
     async (month) => {
       const r = await buildMonth(month)
-      await flush(r.items)
+      // A month that yielded nothing leaves the file alone — no point
+      // rewriting the bank to bump its timestamp.
+      if (r.items.length > 0) await flush(r.items)
       done++
       const elapsed = (Date.now() - startedAt) / 1000
       const eta = done === 0 ? 0 : (elapsed / done) * (todo.length - done)
@@ -486,6 +540,7 @@ async function main() {
     { concurrency }
   )
 
+  const audit = auditBank(bank)
   const thin = bank.months.filter(
     (m) => bank.items.filter((it) => it.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
   )
@@ -505,6 +560,15 @@ async function main() {
         `  Thin months (delete them from the bank and re-run to top up): ${thin.join(", ")}`
       )
     )
+  }
+  console.log(
+    pc.dim(
+      `  audit: true answer is shortest in ${Math.round(audit.shortest_rate * 100)}% of items, ` +
+        `longest in ${Math.round(audit.longest_rate * 100)}% (chance ${Math.round((100 / nOptions))}%)`
+    )
+  )
+  for (const w of audit.warnings) {
+    console.log(pc.yellow(`  ⚠ ${w}`))
   }
   const usageAtEnd = await getKeyUsage(apiKey)
   if (usageAtStart !== null && usageAtEnd !== null) {
@@ -526,15 +590,42 @@ async function main() {
 }
 
 /**
- * One retry on failure. Grounded calls fail transiently often enough
- * (rate limits, upstream search timeouts) that losing a whole month to
- * one blip is worse than the extra call.
+ * One grounded call that must come back as JSON.
+ *
+ * Retries once on failure, because grounded calls fail transiently often
+ * enough (rate limits, upstream search timeouts) that losing a whole
+ * month to one blip costs more than the extra call.
+ *
+ * Truncation is treated as a failure and retried, not passed to the
+ * parser. Several capable models reason internally before writing a
+ * single visible character: gemini-2.5-pro spent 1,436 tokens thinking
+ * about a two-boolean verdict and got cut off mid-string, which reaches
+ * the parser as "unparseable" and looks like a model quality problem
+ * rather than a ceiling that is too low. Checking finish_reason names
+ * the real fault.
  */
-async function withRetry<T extends { success: boolean }>(fn: () => Promise<T>): Promise<T> {
-  const first = await fn()
-  if (first.success) return first
-  await new Promise((r) => setTimeout(r, 2000))
-  return fn()
+async function askJson(
+  opts: Parameters<typeof openrouterChat>[0]
+): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
+  let lastError = "unknown"
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000))
+    const res = await openrouterChat(opts)
+    if (!res.success) {
+      lastError = res.message
+      continue
+    }
+    if (res.raw?.choices?.[0]?.finish_reason === "length") {
+      lastError = `response truncated at ${opts.maxTokens} tokens (raise --max-tokens, or use a model that reasons less)`
+      continue
+    }
+    try {
+      return { ok: true, value: extractJson(res.text) }
+    } catch {
+      lastError = `unparseable JSON: ${res.text.slice(0, 120)}`
+    }
+  }
+  return { ok: false, error: lastError }
 }
 
 function fmtDuration(seconds: number): string {
@@ -561,4 +652,7 @@ function slug(s: string): string {
     .join("-")
 }
 
-await main()
+// Importing this module for its helpers (tests) must not kick off a build.
+if (process.argv[1]?.endsWith("build-quiz.ts")) {
+  await main()
+}
