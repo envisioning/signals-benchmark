@@ -890,14 +890,17 @@ async function cmdCutoff(args: Args) {
     const { probe: quiz, cost: quizCost } = quizResult
     cost += quizCost
 
+    // The remaining probes share the model's budget — capping only the
+    // quiz let 50 aux calls run uncapped on top of it.
+    const remaining = Math.max(0, maxCostUsd - cost)
     let self_report: SelfReportProbe | undefined
-    if (withSelfReport) {
+    if (withSelfReport && remaining > 0.05 && quiz.estimate_reason !== "too-expensive") {
       const r = await runSelfReportProbe({ apiKey, model, concurrency })
       self_report = r.probe
       cost += r.cost
     }
     let identity: IdentityProbe | undefined
-    if (withIdentity) {
+    if (withIdentity && maxCostUsd - cost > 0.05 && quiz.estimate_reason !== "too-expensive") {
       const r = await runIdentityProbe({ apiKey, model, concurrency })
       identity = r.probe
       cost += r.cost
@@ -924,7 +927,11 @@ async function cmdCutoff(args: Args) {
     const refused = quiz.n_refused > 0 ? pc.dim(` · ${quiz.n_refused} unparsed`) : ""
     const capped = quiz.cost_capped
       ? pc.yellow(` · CAPPED at $${maxCostUsd} after ${quiz.n_answered}/${quiz.n_questions}`)
-      : ""
+      : quiz.estimate_reason === "too-expensive"
+        ? pc.yellow(
+            ` · SKIPPED: $${(quiz.first_call_usd ?? 0).toFixed(3)}/question projects to $${((quiz.first_call_usd ?? 0) * quiz.n_questions).toFixed(0)} > $${maxCostUsd} cap`
+          )
+        : ""
     process.stdout.write("\r".padEnd(1))
     console.log(
       `  ${pc.cyan(model)} … ${est}${said}${refused}${capped}${pc.dim(` · $${cost.toFixed(4)}`)}`.padEnd(70)

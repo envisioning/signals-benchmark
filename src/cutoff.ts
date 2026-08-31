@@ -90,6 +90,8 @@ export type QuizProbe = {
    * any estimate off it should be read as provisional.
    */
   cost_capped?: boolean
+  /** Measured cost of the first question, used for the projection below. */
+  first_call_usd?: number
   buckets: QuizBucket[]
   n_questions: number
   n_answered: number
@@ -104,6 +106,7 @@ export type QuizProbe = {
 export type EstimateFailure =
   | "too-few-buckets"
   | "too-many-failures"
+  | "too-expensive"
   | "no-signal"
   | "no-decline-in-window"
   | "below-threshold-throughout"
@@ -554,6 +557,43 @@ export async function runQuizProbe({
   let done = 0
   let capped = false
 
+  /**
+   * Price the model on ONE question before committing to the rest.
+   *
+   * A running cost cap cannot contain a model whose calls are expensive:
+   * with 8 questions in flight, perplexity/sonar-deep-research blew
+   * through a $2 cap to $10.60 and still answered only 14 of 215, because
+   * each call runs its own research pass. Paying five times the cap for a
+   * curve too sparse to fit is the worst of both outcomes.
+   *
+   * So project from the first call and decline the model outright when it
+   * can't be measured within budget. Worst case is now one call over.
+   */
+  let firstCallUsd: number | undefined
+  if (maxCostUsd !== undefined && items.length > 0) {
+    const probe = await ask(quizPrompt(items[0], bank.n_options), 0)
+    firstCallUsd = probe.success ? (probe.usage?.cost ?? 0) : 0
+    cost += firstCallUsd
+    const projected = firstCallUsd * items.length
+    if (projected > maxCostUsd) {
+      return {
+        probe: {
+          n_options: bank.n_options,
+          buckets: [],
+          n_questions: items.length,
+          n_answered: 0,
+          n_refused: 0,
+          n_errored: 0,
+          overall_accuracy: null,
+          estimate: null,
+          estimate_reason: "too-expensive",
+          first_call_usd: firstCallUsd,
+        },
+        cost,
+      }
+    }
+  }
+
   const answers = await pMap(
     items,
     async (item): Promise<QuizAnswer> => {
@@ -603,6 +643,7 @@ export async function runQuizProbe({
     probe: {
       n_options: bank.n_options,
       ...(capped ? { cost_capped: true } : {}),
+      ...(firstCallUsd !== undefined ? { first_call_usd: firstCallUsd } : {}),
       buckets,
       n_questions: items.length,
       n_answered: nAnswered,
