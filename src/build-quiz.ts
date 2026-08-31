@@ -15,16 +15,30 @@
  *   pnpm cutoff:build --rebuild                      (ignore the existing bank)
  *   pnpm cutoff:build --dry-run
  *
+ * Each month is drafted, filtered, verified and WRITTEN before the next
+ * one finishes — the bank on disk is always valid and always complete up
+ * to whatever has landed. That matters because a full window is a long
+ * run against web-grounded models: interrupt it and you keep every month
+ * you already paid for.
+ *
  * Default behaviour is APPEND: months already in data/cutoff-quiz.json
  * are left untouched and only missing months are drafted. That's what
- * makes the quarterly "extend the tail" refresh cheap, and it keeps old
- * buckets byte-identical so previously published curves stay valid.
+ * makes both the quarterly "extend the tail" refresh and resuming an
+ * interrupted build free, and it keeps old buckets byte-identical so
+ * previously published curves stay valid.
  *
  * Cost: roughly $0.03-0.06 per item with verification on. A 36-month
- * window at 5 items/month lands around $6-10 as a one-off; extending
- * the tail by a quarter costs well under a dollar.
+ * window at 5 items/month lands around $6-10 and 20-40 minutes as a
+ * one-off; extending the tail by a quarter costs well under a dollar.
+ * Run it in chunks (`--from`/`--to`) if you'd rather not sit through it.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname, resolve } from "node:path"
 import pc from "picocolors"
 import { loadEnv, requireKey } from "./env.ts"
@@ -224,7 +238,7 @@ async function main() {
   const builder = (args.builder as string) ?? DEFAULT_BUILDER
   const verifier = (args.verifier as string) ?? DEFAULT_VERIFIER
   const verify = !args["no-verify"]
-  const concurrency = Number(args.concurrency ?? 4)
+  const concurrency = Number(args.concurrency ?? 6)
   const to = (args.to as string) ?? lastCompleteMonth()
   const from = (args.from as string) ?? defaultFrom(to)
 
@@ -285,13 +299,25 @@ async function main() {
 
   const usageAtStart = await getKeyUsage(apiKey)
   const { default: pMap } = await import("p-map")
+  const startedAt = Date.now()
 
-  const drafted: { month: string; item: DraftItem }[] = []
-  let done = 0
-  await pMap(
-    todo,
-    async (month) => {
-      const res = await openrouterChat({
+  /**
+   * Draft, filter and verify ONE month, and return the items that
+   * survived. Deliberately month-atomic: the caller writes each month's
+   * result to disk as it lands, so an interrupted build keeps every
+   * month it already paid for and re-running resumes from there. An
+   * earlier version drafted everything, then verified everything, then
+   * wrote once at the end — a 40-minute run that lost the lot on Ctrl-C.
+   */
+  async function buildMonth(month: string): Promise<{
+    items: QuizItem[]
+    drafted: number
+    localDrops: number
+    verifyDrops: number
+    error?: string
+  }> {
+    const res = await withRetry(() =>
+      openrouterChat({
         apiKey,
         model: builder,
         messages: [{ role: "user", content: draftPrompt(month, perMonth, nOptions) }],
@@ -302,125 +328,181 @@ async function main() {
         temperature: 0.4,
         maxTokens: 8000,
         webSearch: true,
-        timeoutMs: 300_000,
+        timeoutMs: 150_000,
       })
-      done++
-      if (!res.success) {
-        console.log(`  [${done}/${todo.length}] ${month} — ${pc.red(res.message.slice(0, 70))}`)
-        return
-      }
-      let items: DraftItem[] = []
-      try {
-        items = (extractJson(res.text)?.items ?? []) as DraftItem[]
-      } catch {
-        console.log(`  [${done}/${todo.length}] ${month} — ${pc.red("unparseable draft")}`)
-        return
-      }
-      let kept = 0
-      for (const item of items) {
-        const why = localReject(item, nOptions)
-        if (why) {
-          console.log(pc.dim(`      drop ${month}: ${why}`))
-          continue
-        }
-        drafted.push({ month, item })
-        kept++
-      }
-      console.log(
-        `  [${done}/${todo.length}] ${month} — ${pc.green(`${kept} drafted`)}${
-          kept < items.length ? pc.dim(` (${items.length - kept} rejected locally)`) : ""
-        }`
-      )
-    },
-    { concurrency }
-  )
-
-  let accepted = drafted
-  if (verify && drafted.length > 0) {
-    console.log(pc.bold(`\nVerifying ${drafted.length} items with ${verifier}`))
-    let vdone = 0
-    const verdicts = await pMap(
-      drafted,
-      async (d) => {
-        const res = await openrouterChat({
-          apiKey,
-          model: verifier,
-          messages: [{ role: "user", content: verifyPrompt(d.month, d.item) }],
-          responseFormat: {
-            type: "json_schema",
-            json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
-          },
-          temperature: 0,
-          maxTokens: 1500,
-          webSearch: true,
-          timeoutMs: 300_000,
-        })
-        vdone++
-        if (!res.success) return { d, ok: false, reason: `verifier error: ${res.message}` }
-        try {
-          const v = extractJson(res.text)
-          const ok = v?.fact_confirmed === true && v?.any_distractor_real === false
-          return { d, ok, reason: String(v?.reason ?? "") }
-        } catch {
-          return { d, ok: false, reason: "unparseable verdict" }
-        }
-      },
-      { concurrency }
     )
-    const rejected = verdicts.filter((v) => !v.ok)
-    for (const r of rejected) {
-      console.log(pc.dim(`      drop ${r.d.month}: ${r.reason.slice(0, 90)}`))
+    if (!res.success) {
+      return { items: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.message }
     }
-    accepted = verdicts.filter((v) => v.ok).map((v) => v.d)
-    console.log(
-      pc.dim(`  verified ${accepted.length}/${drafted.length} (${rejected.length} dropped)`)
-    )
+    let raw: DraftItem[] = []
+    try {
+      raw = (extractJson(res.text)?.items ?? []) as DraftItem[]
+    } catch {
+      return {
+        items: [],
+        drafted: 0,
+        localDrops: 0,
+        verifyDrops: 0,
+        error: "unparseable draft",
+      }
+    }
+
+    // Free gates first — never pay a verifier to look at an item we can
+    // already tell is unusable.
+    const passed: DraftItem[] = []
+    for (const item of raw) {
+      const why = localReject(item, nOptions)
+      if (why) {
+        console.log(pc.dim(`      drop ${month}: ${why}`))
+        continue
+      }
+      passed.push(item)
+    }
+
+    let accepted = passed
+    let verifyDrops = 0
+    if (verify && passed.length > 0) {
+      const verdicts = await pMap(
+        passed,
+        async (item) => {
+          const v = await withRetry(() =>
+            openrouterChat({
+              apiKey,
+              model: verifier,
+              messages: [{ role: "user", content: verifyPrompt(month, item) }],
+              responseFormat: {
+                type: "json_schema",
+                json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
+              },
+              temperature: 0,
+              maxTokens: 1500,
+              webSearch: true,
+              timeoutMs: 150_000,
+            })
+          )
+          if (!v.success) return { item, ok: false, reason: `verifier error: ${v.message}` }
+          try {
+            const parsed = extractJson(v.text)
+            return {
+              item,
+              ok: parsed?.fact_confirmed === true && parsed?.any_distractor_real === false,
+              reason: String(parsed?.reason ?? ""),
+            }
+          } catch {
+            return { item, ok: false, reason: "unparseable verdict" }
+          }
+        },
+        { concurrency: Math.min(perMonth, 5) }
+      )
+      for (const v of verdicts) {
+        if (!v.ok) console.log(pc.dim(`      drop ${month}: ${v.reason.slice(0, 90)}`))
+      }
+      accepted = verdicts.filter((v) => v.ok).map((v) => v.item)
+      verifyDrops = verdicts.length - accepted.length
+    }
+
+    const items = accepted.map((item, i) => {
+      const id = `${month}-${String(i).padStart(2, "0")}-${slug(item.fact)}`
+      const { options, answer } = shuffleOptions(
+        id,
+        item.fact.trim(),
+        item.distractors.map((d) => d.trim())
+      )
+      return {
+        id,
+        month,
+        domain: item.domain,
+        options,
+        answer,
+        source: { url: item.source_url, title: item.source_title },
+      }
+    })
+
+    return {
+      items,
+      drafted: raw.length,
+      localDrops: raw.length - passed.length,
+      verifyDrops,
+    }
   }
 
-  const newItems: QuizItem[] = accepted.map(({ month, item }, i) => {
-    const id = `${month}-${String(i).padStart(3, "0")}-${slug(item.fact)}`
-    const { options, answer } = shuffleOptions(id, item.fact.trim(), item.distractors.map((d) => d.trim()))
-    return {
-      id,
-      month,
-      domain: item.domain,
-      options,
-      answer,
-      source: { url: item.source_url, title: item.source_title },
-    }
-  })
-
-  const items = [...(existing?.items ?? []), ...newItems].sort(
-    (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
-  )
+  // Accumulating bank, flushed after every month.
   const bank: QuizBank = {
     version,
     built_at: new Date().toISOString(),
     builder_model: builder,
     ...(verify ? { verifier_model: verifier } : {}),
     n_options: nOptions,
-    months: [...new Set(items.map((it) => it.month))].sort(
-      (a, b) => monthOrdinal(a) - monthOrdinal(b)
-    ),
-    items,
+    months: [...have].sort((a, b) => monthOrdinal(a) - monthOrdinal(b)),
+    items: [...(existing?.items ?? [])],
   }
-  validateBank(bank)
 
-  mkdirSync(dirname(outPath), { recursive: true })
-  writeFileSync(outPath, JSON.stringify(bank, null, 2))
+  // Months run concurrently, so serialise the read-modify-write.
+  let flushing: Promise<void> = Promise.resolve()
+  function flush(items: QuizItem[]): Promise<void> {
+    flushing = flushing.then(() => {
+      bank.items.push(...items)
+      bank.items.sort(
+        (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
+      )
+      bank.months = [...new Set(bank.items.map((it) => it.month))].sort(
+        (a, b) => monthOrdinal(a) - monthOrdinal(b)
+      )
+      bank.built_at = new Date().toISOString()
+      validateBank(bank)
+      mkdirSync(dirname(outPath), { recursive: true })
+      // Write-then-rename so an interrupt can't leave a half-written file.
+      const tmp = `${outPath}.tmp`
+      writeFileSync(tmp, JSON.stringify(bank, null, 2))
+      renameSync(tmp, outPath)
+    })
+    return flushing
+  }
+
+  let done = 0
+  let failed = 0
+  await pMap(
+    todo,
+    async (month) => {
+      const r = await buildMonth(month)
+      await flush(r.items)
+      done++
+      const elapsed = (Date.now() - startedAt) / 1000
+      const eta = done === 0 ? 0 : (elapsed / done) * (todo.length - done)
+      const status = r.error
+        ? pc.red(`✗ ${r.error.slice(0, 60)}`)
+        : pc.green(`${r.items.length} kept`) +
+          (r.localDrops + r.verifyDrops > 0
+            ? pc.dim(` (${r.localDrops + r.verifyDrops} dropped)`)
+            : "")
+      if (r.error) failed++
+      console.log(
+        `  [${done}/${todo.length}] ${month} — ${status}` +
+          pc.dim(
+            ` · ${bank.items.length} items banked · ${fmtDuration(eta)} left${await billedSoFar()}`
+          )
+      )
+    },
+    { concurrency }
+  )
 
   const thin = bank.months.filter(
-    (m) => items.filter((it) => it.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
+    (m) => bank.items.filter((it) => it.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
   )
   console.log()
   console.log(pc.green(`✓ Wrote ${outPath}`))
   console.log(
     pc.dim(`  ${bank.items.length} items · ${bank.months.length} months · ${nOptions}-way · version ${version}`)
   )
+  if (failed > 0) {
+    console.log(
+      pc.yellow(`  ${failed} month(s) failed outright — re-run to retry just those.`)
+    )
+  }
   if (thin.length > 0) {
     console.log(
       pc.yellow(
-        `  Thin months (re-run to top up): ${thin.join(", ")}`
+        `  Thin months (delete them from the bank and re-run to top up): ${thin.join(", ")}`
       )
     )
   }
@@ -433,6 +515,33 @@ async function main() {
   console.log("  Skim the bank — the true answers should not stand out.")
   console.log("  git add data/cutoff-quiz.json && git commit -m \"cutoff: quiz bank\"")
   console.log("  pnpm cutoff")
+
+  /** Running total billed on this key since the build started. */
+  async function billedSoFar(): Promise<string> {
+    if (usageAtStart === null) return ""
+    const now = await getKeyUsage(apiKey)
+    if (now === null) return ""
+    return ` · $${Math.max(0, now - usageAtStart).toFixed(2)}`
+  }
+}
+
+/**
+ * One retry on failure. Grounded calls fail transiently often enough
+ * (rate limits, upstream search timeouts) that losing a whole month to
+ * one blip is worse than the extra call.
+ */
+async function withRetry<T extends { success: boolean }>(fn: () => Promise<T>): Promise<T> {
+  const first = await fn()
+  if (first.success) return first
+  await new Promise((r) => setTimeout(r, 2000))
+  return fn()
+}
+
+function fmtDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m"
+  const m = Math.round(seconds / 60)
+  if (m < 60) return `${m}m`
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}m`
 }
 
 /** 36 months back — long enough to see a plateau before any current cutoff. */

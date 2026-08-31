@@ -131,16 +131,23 @@ The method is adapted from Shrivu Shankar's [Exploring Claude/GPT knowledge cuto
 The bank isn't hand-written — a web-grounded model drafts it and a second grounded model from a different vendor verifies every item before it's allowed in:
 
 ```bash
-pnpm cutoff:build --from 2023-01          # 36 months × 5 items, ~$6-10
+pnpm cutoff:build --from 2023-01          # 36 months × 5 items, ~$6-10, 20-40 min
+pnpm cutoff:build --from 2025-01          # or build it in chunks
 pnpm cutoff:build --no-verify             # half the cost, more noise
 pnpm cutoff:build --dry-run
 ```
+
+It's a long run against web-grounded models, so it's built to be interrupted: each
+month is drafted, verified and **written to disk before the next one finishes**, and
+re-running skips months the bank already has. Ctrl-C at minute 30 keeps 30 minutes of
+work; just run it again. Progress lines carry a running item count, an ETA, and the
+amount billed so far.
 
 Items are rejected before they cost anything if they leak a date, if the true statement is a length outlier vs. its distractors (a classic multiple-choice tell), or if they lack a source URL. Then the verifier drops anything it can't confirm happened in that month, or where a "false" statement turns out to be real.
 
 Output is `data/cutoff-quiz.json`, **committed** — every model must answer the same questions for the numbers to mean anything. Skim it before committing: if you can spot the true answers, so can the models, and the plateau will read too high.
 
-Re-running **appends**: months already in the bank are left byte-identical, only missing months get drafted. That makes the quarterly "extend the tail" refresh cost under a dollar and keeps previously published curves valid.
+Re-running **appends**: months already in the bank are left byte-identical, only missing months get drafted. That makes both the quarterly "extend the tail" refresh and resuming an interrupted build cost only what's actually missing, and keeps previously published curves valid.
 
 ### Run the probe
 
