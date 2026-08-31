@@ -3,6 +3,7 @@
  *
  *   public/benchmark/<YYYY-MM-DD>.json            ← overview (leaderboard)
  *   public/benchmark/<YYYY-MM-DD>/<model>.json    ← per-model detail (signals + judge verdicts)
+ *   public/benchmark/<YYYY-MM-DD>-cutoff.json     ← knowledge-cutoff report (when present)
  *
  * Also rewrites the public page's `CURRENT_BENCHMARK_FILE` constant
  * to point at the new date.
@@ -13,6 +14,7 @@
  *   pnpm bench:publish --date 2026-08-15
  *   pnpm bench:publish --dest ../signals-strict   (override the target repo)
  *   pnpm bench:publish --no-detail                (only publish the overview)
+ *   pnpm bench:publish --no-cutoff                (skip the cutoff report)
  *   pnpm bench:publish --dry-run
  *
  * Why per-model detail: the overview JSON is small (one row per model)
@@ -274,6 +276,7 @@ function main() {
   const args = parseArgs(process.argv.slice(2))
   const dryRun = Boolean(args["dry-run"])
   const skipDetail = Boolean(args["no-detail"])
+  const skipCutoff = Boolean(args["no-cutoff"])
   const dest = resolve(
     (args.dest as string) ?? resolve(process.cwd(), "..", "signals-strict")
   )
@@ -296,6 +299,12 @@ function main() {
   const destBenchDir = join(dest, "public", "benchmark")
   const overviewDest = join(destBenchDir, `${date}.json`)
   const detailDir = join(destBenchDir, date)
+  // Optional: only present when `pnpm cutoff` has run against this run.
+  // The public page renders the section when the file exists and omits
+  // it when it doesn't, so publishing without one is a valid state.
+  const cutoffSrc = join(runDir, "cutoff.json")
+  const cutoffDest = join(destBenchDir, `${date}-cutoff.json`)
+  const hasCutoff = !skipCutoff && existsSync(cutoffSrc)
   // The CURRENT_BENCHMARK_FILE constant moved to _shared.ts so client
   // components could import it (they can't pull from a Server-Component
   // page.tsx). Update there.
@@ -340,6 +349,13 @@ function main() {
   console.log(`  source:        ${pc.cyan(overviewSrc)}`)
   console.log(`  overview dest: ${pc.cyan(overviewDest)}`)
   console.log(`  detail dest:   ${pc.cyan(detailDir + "/")}`)
+  console.log(
+    `  cutoff:        ${
+      hasCutoff
+        ? pc.cyan(cutoffDest)
+        : pc.dim(skipCutoff ? "(skipped)" : "(none — run `pnpm cutoff` to add one)")
+    }`
+  )
   console.log(`  page:          ${pc.cyan(pagePath)}`)
   console.log(
     `  scores:        ${overview.scores.length} total · ${publishableScores.length} with signals`
@@ -378,6 +394,12 @@ function main() {
     )
   } else {
     console.log(pc.dim(`  Skipped per-model detail (--no-detail)`))
+  }
+
+  // ── Knowledge cutoff ──
+  if (hasCutoff) {
+    copyFileSync(cutoffSrc, cutoffDest)
+    console.log(pc.green(`✓ Wrote cutoff report → ${cutoffDest}`))
   }
 
   // ── Page constant ──

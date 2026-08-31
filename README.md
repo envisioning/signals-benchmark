@@ -23,6 +23,8 @@ Each model is run against a frozen suite of **12 briefs** spanning healthcare, f
 
 The composite is a weighted mean. **Per-axis sub-scores are emitted alongside** — if you weight things differently, re-compute from the raw JSON without re-running anything.
 
+Alongside the four axes, a separate probe estimates each model's **[knowledge cutoff](#knowledge-cutoff)** — deliberately *not* folded into the composite, because it's a property of the model, not a quality judgement.
+
 ---
 
 ## Quickstart
@@ -110,6 +112,51 @@ Reads from `../results/` directly. Zero API calls of its own. Public consumers (
 
 ---
 
+## Knowledge cutoff
+
+Currency measures how recent a model's *cited evidence* is. Cutoff measures how recent its *world model* is. A model whose knowledge stops fourteen months ago can't produce a current signal of change no matter how well it writes — so the benchmark measures it, and reports it next to the leaderboard rather than inside it.
+
+The method is adapted from Shrivu Shankar's [Exploring Claude/GPT knowledge cutoffs](https://blog.sshh.io/p/exploring-claudegpt-knowledge-cutoffs). Three probes per model:
+
+| Probe | What it asks | What it gives you |
+|---|---|---|
+| **Quiz** | 8-way multiple choice about real events, bucketed by month | Accuracy decays from a plateau to chance (12.5%) as questions move past training. The cutoff is read off that curve. |
+| **Self-report** | "What month is it?" / "When does your training data end?" × 5 phrasings | What the model *believes*, and how much that belief moves with the phrasing. |
+| **Identity** | "What model are you?" × 5 phrasings | Doesn't date anything on its own, but a model that thinks it's its own predecessor tells you something about what it was trained on. |
+
+**Reading the curve.** We take the **midpoint** of the decay, not its start or end — the same choice the source method makes, for the same two reasons: models partially anticipate near-future events (so accuracy starts falling before the cutoff), and the last months before a cutoff are undersampled in training data (so it sags early too). When the curve can't support an estimate, the runner reports *why* (`no-decline-in-window`, `no-signal`, `too-few-buckets`) instead of guessing.
+
+### Build the quiz bank (one-off)
+
+The bank isn't hand-written — a web-grounded model drafts it and a second grounded model from a different vendor verifies every item before it's allowed in:
+
+```bash
+pnpm cutoff:build --from 2023-01          # 36 months × 5 items, ~$6-10
+pnpm cutoff:build --no-verify             # half the cost, more noise
+pnpm cutoff:build --dry-run
+```
+
+Items are rejected before they cost anything if they leak a date, if the true statement is a length outlier vs. its distractors (a classic multiple-choice tell), or if they lack a source URL. Then the verifier drops anything it can't confirm happened in that month, or where a "false" statement turns out to be real.
+
+Output is `data/cutoff-quiz.json`, **committed** — every model must answer the same questions for the numbers to mean anything. Skim it before committing: if you can spot the true answers, so can the models, and the plateau will read too high.
+
+Re-running **appends**: months already in the bank are left byte-identical, only missing months get drafted. That makes the quarterly "extend the tail" refresh cost under a dollar and keeps previously published curves valid.
+
+### Run the probe
+
+```bash
+pnpm cutoff                               # latest run's cohort
+pnpm cutoff --run <run-id>
+pnpm cutoff --preset frontier
+pnpm cutoff --per-month 3 --no-identity   # cheaper
+```
+
+By default it probes exactly the cohort of an existing benchmark run, so the cutoff rows line up 1:1 with the leaderboard rows. Results land in `results/<run-id>/cutoff.json` (plus one file per model under `cutoff/`, which is reused on re-runs unless you pass `--refresh`). `bench:publish` picks the report up automatically.
+
+**Cost:** dominated by the quiz — `months × per-month` short calls per model. A 36-month bank at 5/month is 180 calls per model, roughly $0.10–0.60 depending on the model.
+
+---
+
 ## Cost discipline
 
 The dominant cost is the **web-grounded verifier**. Empirical pricing across providers (per call):
@@ -141,7 +188,8 @@ pnpm bench:publish --date 2026-08-15 # custom date for the filename
 The publisher:
 1. Copies `results/<run>/leaderboard.json` → `../signals-strict/public/benchmark/<date>.json`
 2. Writes per-model detail files (signals + verdicts + citations) → `../signals-strict/public/benchmark/<date>/<vendor>_<model>.json`
-3. Rewrites `CURRENT_BENCHMARK_FILE` in the consumer's page so the new run goes live on next deploy
+3. Copies `results/<run>/cutoff.json` → `<date>-cutoff.json`, when the run has one (skip with `--no-cutoff`)
+4. Rewrites `CURRENT_BENCHMARK_FILE` in the consumer's page so the new run goes live on next deploy
 
 Override the target with `--dest /path/to/some/other/repo` if you're publishing elsewhere.
 
@@ -155,6 +203,7 @@ Stated up front because the methodology is opinionated:
 - **Judges have biases.** Same-vendor models can mildly self-favor. We use different vendors for verifier + specificity, and the judges-used are recorded in every leaderboard.
 - **Frozen briefs can be gamed.** Once public, briefs could in principle be tuned to. Versioned via `BRIEFS_VERSION` — cross-version comparisons aren't valid.
 - **The `future` verdict is judgement-heavy.** Forward-looking signals can't be web-verified. Dedicated bucket scored mid-range relies on judge plausibility call.
+- **Cutoff estimates are curve-fits, not facts.** The quiz bank is model-drafted (and model-verified); a wrong "true" answer or a distractor that's secretly real adds noise. The estimate is a midpoint with a bracket, and it's reported as null rather than guessed when the curve doesn't decline inside the window.
 - **Maturation needs volume.** A single run is one data point. Confidence comes from many dated runs across many judges over time.
 
 ---
@@ -163,7 +212,7 @@ Stated up front because the methodology is opinionated:
 
 ```
 src/
-├── cli.ts             # run | resume | report | list subcommands
+├── cli.ts             # run | resume | report | cutoff | list subcommands
 ├── publish.ts         # bench:publish — copies to a consumer repo
 ├── briefs.ts          # 12 frozen industry briefs
 ├── models.ts          # OpenRouter slugs + tier metadata
@@ -172,10 +221,14 @@ src/
 ├── evaluate.ts        # phase 2 — judges score each signal
 ├── score.ts           # phase 3 — composite + coverage
 ├── cache.ts           # exact + embedding-based semantic cache
+├── cutoff.ts          # knowledge-cutoff probes + curve estimator
+├── cutoff-quiz.ts     # quiz-bank types, loader, validator, month math
+├── build-quiz.ts      # cutoff:build — drafts + verifies the quiz bank
 ├── openrouter.ts      # thin caller, embeddings, /auth/key probe
 ├── env.ts             # .env loader (no dotenv dep)
 ├── report.ts          # markdown leaderboard renderer
 └── types.ts
+data/                  # committed — the frozen cutoff quiz bank
 results/               # gitignored — raw per-run outputs
 cache/                 # gitignored — semantic eval cache
 web/                   # optional local Next.js viewer

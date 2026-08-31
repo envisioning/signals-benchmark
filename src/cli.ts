@@ -5,6 +5,7 @@
  *   run     — execute the full benchmark matrix and write a leaderboard.
  *   report  — re-render the leaderboard from an existing run's JSON
  *             (useful when you tweak weights in score.ts).
+ *   cutoff  — estimate each model's knowledge cutoff (see src/cutoff.ts).
  *   list    — print available briefs and models, then exit.
  *
  * Flags (run):
@@ -37,6 +38,23 @@ import { getPreset, listPresets } from "./presets.ts"
 import { generateForBrief } from "./generate.ts"
 import { evaluateRun, makeCaches } from "./evaluate.ts"
 import { getKeyUsage } from "./openrouter.ts"
+import {
+  DEFAULT_BANK_PATH,
+  QuizBankError,
+  itemsForMonths,
+  loadQuizBank,
+  monthOrdinal,
+  type QuizBank,
+} from "./cutoff-quiz.ts"
+import {
+  runIdentityProbe,
+  runQuizProbe,
+  runSelfReportProbe,
+  type CutoffReport,
+  type IdentityProbe,
+  type ModelCutoff,
+  type SelfReportProbe,
+} from "./cutoff.ts"
 import { scoreModels } from "./score.ts"
 import { writeReport, renderConsole } from "./report.ts"
 import type {
@@ -667,6 +685,249 @@ async function cmdReport(args: Args) {
   console.log(pc.green(`✓ Re-rendered ${jsonPath}`))
 }
 
+/**
+ * Estimate each model's knowledge cutoff (see src/cutoff.ts for the
+ * method). Runs against the cohort of an existing benchmark run so the
+ * cutoff rows line up 1:1 with the leaderboard rows, and writes
+ * `results/<run-id>/cutoff.json` where `bench:publish` picks it up.
+ *
+ * Flags:
+ *   --run <id>          run whose cohort to probe (default: latest)
+ *   --models a,b        override the cohort
+ *   --preset top25      ditto, by preset
+ *   --quiz <path>       quiz bank (default: data/cutoff-quiz.json)
+ *   --from / --to       restrict the month window
+ *   --per-month <n>     cap questions per month (default: all in the bank)
+ *   --no-self-report    skip the "what month is it" probe
+ *   --no-identity       skip the "what model are you" probe
+ *   --refresh           re-probe models that already have a result file
+ *   --concurrency <n>   questions in flight per model (default 6)
+ */
+async function cmdCutoff(args: Args) {
+  loadEnv()
+  const apiKey = requireKey()
+
+  let bank: QuizBank
+  try {
+    bank = loadQuizBank((args.quiz as string) ?? DEFAULT_BANK_PATH)
+  } catch (e: any) {
+    console.error(pc.red(e instanceof QuizBankError ? e.message : String(e?.message ?? e)))
+    process.exit(1)
+  }
+
+  // Cohort: the models from an existing run, unless overridden. Probing
+  // the same cohort is the point — a cutoff column is only interesting
+  // next to the leaderboard row it belongs to.
+  let modelIds = list(args.models)
+  if (!modelIds && typeof args.preset === "string") {
+    const preset = getPreset(args.preset)
+    if (!preset) {
+      console.error(pc.red(`Unknown preset: ${args.preset}. Available: ${listPresets().join(", ")}`))
+      process.exit(1)
+    }
+    modelIds = preset
+  }
+  if (!modelIds && (args.vendors || args.tiers)) {
+    modelIds = filterModels({
+      vendors: list(args.vendors),
+      tiers: list(args.tiers) as any,
+    }).map((m) => m.id)
+  }
+
+  const runId = (args.run as string) || pickLatestRunId()
+  let runDir: string
+  let meta: BenchmarkRun | undefined
+  if (runId) {
+    runDir = resolve("results", runId)
+    const metaPath = join(runDir, "meta.json")
+    if (existsSync(metaPath)) {
+      meta = JSON.parse(readFileSync(metaPath, "utf-8")) as BenchmarkRun
+    }
+  } else {
+    if (!modelIds) {
+      console.error(
+        pc.red(
+          "No benchmark run found in results/ and no --models/--preset given.\n" +
+            "Either run `pnpm bench` first, or name the cohort explicitly."
+        )
+      )
+      process.exit(1)
+    }
+    runDir = resolve("results", `cutoff-${new Date().toISOString().replace(/[:.]/g, "-")}`)
+  }
+
+  const models = modelIds ?? meta?.models ?? []
+  if (models.length === 0) {
+    console.error(pc.red("Empty cohort — pass --models or --preset."))
+    process.exit(1)
+  }
+
+  const windowMonths = bank.months.filter((m) => {
+    if (typeof args.from === "string" && monthOrdinal(m) < monthOrdinal(args.from)) return false
+    if (typeof args.to === "string" && monthOrdinal(m) > monthOrdinal(args.to)) return false
+    return true
+  })
+  let items = itemsForMonths(bank, windowMonths)
+  const perMonth = args["per-month"] ? Number(args["per-month"]) : undefined
+  if (perMonth) {
+    const taken = new Map<string, number>()
+    items = items.filter((it) => {
+      const n = taken.get(it.month) ?? 0
+      if (n >= perMonth) return false
+      taken.set(it.month, n + 1)
+      return true
+    })
+  }
+  if (items.length === 0) {
+    console.error(pc.red("No quiz items in the requested window."))
+    process.exit(1)
+  }
+
+  const withSelfReport = !args["no-self-report"]
+  const withIdentity = !args["no-identity"]
+  const concurrency = Number(args.concurrency ?? 6)
+  const cutoffDir = join(runDir, "cutoff")
+
+  console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
+  console.log(
+    pc.dim(
+      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way) · quiz ${bank.version}`
+    )
+  )
+  console.log(
+    pc.dim(
+      `  probes: quiz${withSelfReport ? " + self-report" : ""}${withIdentity ? " + identity" : ""}`
+    )
+  )
+  console.log(pc.dim(`  results → ${runDir}\n`))
+
+  if (args["dry-run"]) {
+    console.log(pc.yellow("Dry run — exiting before any API calls."))
+    return
+  }
+
+  mkdirSync(cutoffDir, { recursive: true })
+  const startedAt = new Date().toISOString()
+  const usageAtStart = await getKeyUsage(apiKey)
+
+  const results: ModelCutoff[] = []
+  for (const model of models) {
+    const path = join(cutoffDir, `${model.replace(/\//g, "_")}.json`)
+    if (!args.refresh && existsSync(path)) {
+      try {
+        results.push(JSON.parse(readFileSync(path, "utf-8")) as ModelCutoff)
+        console.log(pc.dim(`  ${model} — reused`))
+        continue
+      } catch {
+        /* corrupt file → re-probe */
+      }
+    }
+
+    process.stdout.write(`  ${pc.cyan(model)} … `)
+    let cost = 0
+    const { probe: quiz, cost: quizCost } = await runQuizProbe({
+      apiKey,
+      model,
+      bank,
+      items,
+      concurrency,
+    })
+    cost += quizCost
+
+    let self_report: SelfReportProbe | undefined
+    if (withSelfReport) {
+      const r = await runSelfReportProbe({ apiKey, model, concurrency })
+      self_report = r.probe
+      cost += r.cost
+    }
+    let identity: IdentityProbe | undefined
+    if (withIdentity) {
+      const r = await runIdentityProbe({ apiKey, model, concurrency })
+      identity = r.probe
+      cost += r.cost
+    }
+
+    const row: ModelCutoff = {
+      model,
+      probed_at: new Date().toISOString(),
+      quiz,
+      ...(self_report ? { self_report } : {}),
+      ...(identity ? { identity } : {}),
+      cost_usd: cost,
+    }
+    results.push(row)
+    writeFileSync(path, JSON.stringify(row, null, 2))
+
+    const est = quiz.estimate
+      ? pc.green(quiz.estimate.month)
+      : pc.yellow(quiz.estimate_reason ?? "no estimate")
+    const said = self_report?.cutoff.median ? pc.dim(` · says ${self_report.cutoff.median}`) : ""
+    const refused = quiz.n_refused > 0 ? pc.dim(` · ${quiz.n_refused} unparsed`) : ""
+    console.log(`${est}${said}${refused}${pc.dim(` · $${cost.toFixed(4)}`)}`)
+  }
+
+  const usageAtEnd = await getKeyUsage(apiKey)
+  const report: CutoffReport = {
+    run_id: runId ?? "standalone",
+    started_at: startedAt,
+    finished_at: new Date().toISOString(),
+    quiz_version: bank.version,
+    quiz_builder_model: bank.builder_model,
+    n_options: bank.n_options,
+    months: windowMonths,
+    n_questions: items.length,
+    models: results,
+    ...(usageAtStart !== null && usageAtEnd !== null
+      ? { billed_actual_usd: Math.max(0, usageAtEnd - usageAtStart) }
+      : {}),
+  }
+  const outPath = join(runDir, "cutoff.json")
+  writeFileSync(outPath, JSON.stringify(report, null, 2))
+
+  console.log(renderCutoffConsole(report))
+  console.log(pc.green(`✓ Wrote ${outPath}`))
+  if (report.billed_actual_usd !== undefined) {
+    console.log(pc.bold(`  Billed: $${report.billed_actual_usd.toFixed(4)}`))
+  }
+  console.log(pc.dim(`  Publish alongside the leaderboard with: pnpm bench:publish --run ${runId ?? "<id>"}`))
+}
+
+function renderCutoffConsole(report: CutoffReport): string {
+  const lines: string[] = ["", pc.bold(pc.cyan(`Estimated knowledge cutoffs`))]
+  lines.push(
+    pc.dim(
+      `${report.n_questions} questions · ${report.n_options}-way (chance ${Math.round((100 / report.n_options))}%) · quiz ${report.quiz_version}`
+    )
+  )
+  lines.push("")
+  lines.push(
+    pc.bold(`${pad("Model", 40)}${pad("Estimated", 12)}${pad("Says", 10)}${pad("Plateau", 9)}${pad("Overall", 8)}`)
+  )
+  lines.push(pc.dim("─".repeat(79)))
+  const sorted = [...report.models].sort((a, b) => {
+    const av = a.quiz.estimate ? monthOrdinal(a.quiz.estimate.month) : -1
+    const bv = b.quiz.estimate ? monthOrdinal(b.quiz.estimate.month) : -1
+    return bv - av
+  })
+  for (const m of sorted) {
+    const est = m.quiz.estimate?.month ?? `— ${m.quiz.estimate_reason ?? ""}`
+    const says = m.self_report?.cutoff.median ?? "—"
+    const plateau = m.quiz.estimate ? `${Math.round(m.quiz.estimate.plateau * 100)}%` : "—"
+    const overall =
+      m.quiz.overall_accuracy === null ? "—" : `${Math.round(m.quiz.overall_accuracy * 100)}%`
+    lines.push(
+      `${pad(m.model, 40)}${pad(est, 12)}${pad(says, 10)}${pad(plateau, 9)}${pad(overall, 8)}`
+    )
+  }
+  lines.push("")
+  return lines.join("\n")
+}
+
+function pad(s: string, n: number): string {
+  if (s.length >= n) return s.slice(0, n)
+  return s + " ".repeat(n - s.length)
+}
+
 function pickLatestRunId(): string | undefined {
   const base = resolve("results")
   if (!existsSync(base)) return undefined
@@ -714,9 +975,11 @@ if (cmd === "run") {
   await cmdResume(args)
 } else if (cmd === "report") {
   await cmdReport(args)
+} else if (cmd === "cutoff") {
+  await cmdCutoff(args)
 } else if (cmd === "list") {
   cmdList()
 } else {
-  console.error(`Unknown command: ${cmd}. Try: run | resume | report | list`)
+  console.error(`Unknown command: ${cmd}. Try: run | resume | report | cutoff | list`)
   process.exit(1)
 }

@@ -68,7 +68,7 @@ CRITICAL:
  * etc. need a much higher max_tokens or they truncate mid-response (o3)
  * or return an empty body (o4-mini consumed all tokens reasoning).
  */
-function isReasoningModel(model: string): boolean {
+export function isReasoningModel(model: string): boolean {
   return (
     /^openai\/o\d/.test(model) || // o1, o3, o4, ...
     model.includes("deepseek-r1") ||
@@ -86,7 +86,7 @@ function isReasoningModel(model: string): boolean {
  * codebase explicitly omits `reasoning` for openai/* — we follow the
  * same pattern. Without this, o3/o4-mini fail with cryptic 400s.
  */
-function shouldPassReasoning(model: string): boolean {
+export function shouldPassReasoning(model: string): boolean {
   return isReasoningModel(model) && !model.startsWith("openai/")
 }
 
