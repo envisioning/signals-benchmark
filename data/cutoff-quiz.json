@@ -1,6 +1,6 @@
 {
   "version": "2026-08-v2",
-  "built_at": "2026-08-31T14:47:10.303Z",
+  "built_at": "2026-08-31T15:14:44.639Z",
   "builder_model": "openai/gpt-5.4:online",
   "verifier_model": "google/gemini-2.5-flash:online",
   "n_options": 8,
@@ -151,6 +151,16 @@
       }
     },
     {
+      "id": "2023-02-04-bola-tinubu-was-declared",
+      "month": "2023-02",
+      "domain": "world politics or policy",
+      "statement": "Bola Tinubu was declared president-elect of Nigeria after defeating Atiku Abubakar and Peter Obi in a disputed national vote.",
+      "source": {
+        "url": "https://www.voanews.com/a/partial-results-of-disputed-nigeria-election-show-tinubu-in-lead/6982058.html",
+        "title": "Nigeria's Tinubu Declared President-Elect After Disputed Election"
+      }
+    },
+    {
       "id": "2023-03-00-kaja-kallas-s-reform",
       "month": "2023-03",
       "domain": "world politics or policy",
@@ -188,6 +198,16 @@
       "source": {
         "url": "https://en.wikipedia.org/wiki/2023_Rolling_Fork_tornado",
         "title": "2023 Rolling Fork tornado"
+      }
+    },
+    {
+      "id": "2023-03-04-the-international-criminal-court",
+      "month": "2023-03",
+      "domain": "world politics or policy",
+      "statement": "The International Criminal Court issued an arrest warrant for Vladimir Putin, accusing the Russian president of the war crime of illegally deporting Ukrainian children.",
+      "source": {
+        "url": "https://www.reuters.com/world/europe/icc-judges-issue-arrest-warrant-against-putin-over-alleged-war-crimes-2023-03-17/",
+        "title": "ICC judges issue arrest warrant for Putin over war crimes in Ukraine"
       }
     },
     {
@@ -231,6 +251,16 @@
       }
     },
     {
+      "id": "2023-04-04-finland-formally-joined-nato",
+      "month": "2023-04",
+      "domain": "world politics or policy",
+      "statement": "Finland formally joined NATO as its 31st member after Turkey and Hungary ratified accession, ending decades of military nonalignment amid Russia’s war.",
+      "source": {
+        "url": "https://apnews.com/article/fe9560e80b1a43c4037eea7c6f5176bd",
+        "title": "Timeline of Sweden's bid to join the NATO alliance"
+      }
+    },
+    {
       "id": "2023-05-00-nvidia-forecast-quarterly-revenue",
       "month": "2023-05",
       "domain": "business, markets, or technology",
@@ -258,6 +288,26 @@
       "source": {
         "url": "https://www.reuters.com/world/middle-east/turkeys-erdogan-triumphs-election-test-extending-his-20-year-rule-2023-05-28/",
         "title": "Turkey's Erdogan triumphs in election test, extending 20-year rule"
+      }
+    },
+    {
+      "id": "2023-05-03-thailand-s-move-forward",
+      "month": "2023-05",
+      "domain": "world politics or policy",
+      "statement": "Thailand’s Move Forward Party and Pheu Thai won the most parliamentary seats, upending nearly a decade of army-backed rule and empowering reformist leader Pita Limjaroenrat.",
+      "source": {
+        "url": "https://theprint.in/world/preliminary-results-of-thailands-election/1574582/",
+        "title": "Preliminary results of Thailand's election – ThePrint – ReutersFeed"
+      }
+    },
+    {
+      "id": "2023-05-04-the-world-health-organization",
+      "month": "2023-05",
+      "domain": "science, space, or medicine",
+      "statement": "The World Health Organization ended COVID-19’s highest global alert status, with Tedros Adhanom Ghebreyesus saying countries should manage the virus alongside other infectious diseases.",
+      "source": {
+        "url": "https://www.who.int/europe/news-room/05-05-2023-statement-on-the-fifteenth-meeting-of-the-international-health-regulations-%282005%29-emergency-committee-regarding-the-coronavirus-disease-%28covid-19%29-pandemic",
+        "title": "Statement on the fifteenth meeting of the International Health Regulations (2005) Emergency Committee regarding the coronavirus disease (COVID-19) pandemic"
       }
     },
     {
@@ -301,6 +351,16 @@
       }
     },
     {
+      "id": "2023-06-04-kyriakos-mitsotakis-secured-a",
+      "month": "2023-06",
+      "domain": "world politics or policy",
+      "statement": "Kyriakos Mitsotakis secured a second term as Greece’s prime minister after New Democracy won a parliamentary majority in a repeat national election.",
+      "source": {
+        "url": "https://www.pbs.org/newshour/amp/world/greek-conservative-party-is-favored-to-win-majority-in-2nd-general-election-in-5-weeks",
+        "title": "Greece’s conservative party wins majority in landslide election victory"
+      }
+    },
+    {
       "id": "2023-07-00-soldiers-in-niger-announced",
       "month": "2023-07",
       "domain": "world politics or policy",
@@ -331,6 +391,26 @@
       }
     },
     {
+      "id": "2023-07-03-president-recep-tayyip-erdogan",
+      "month": "2023-07",
+      "domain": "world politics or policy",
+      "statement": "President Recep Tayyip Erdogan agreed to forward Sweden’s NATO accession bid to Turkey’s parliament after talks with Jens Stoltenberg in Vilnius.",
+      "source": {
+        "url": "https://www.washingtonpost.com/world/2023/07/10/turkey-nato-summit-eu-sweden/",
+        "title": "Turkey drops opposition to Sweden’s NATO bid on eve of summit"
+      }
+    },
+    {
+      "id": "2023-07-04-the-european-space-agency",
+      "month": "2023-07",
+      "domain": "science, space, or medicine",
+      "statement": "The European Space Agency launched the Euclid telescope aboard a SpaceX Falcon 9, starting a mission to map dark matter and dark energy.",
+      "source": {
+        "url": "https://www.esa.int/Science_Exploration/Space_Science/Euclid/ESA_s_Euclid_lifts_off_on_quest_to_unravel_the_cosmic_mystery_of_dark_matter_and_dark_energy",
+        "title": "ESA’s Euclid lifts off on quest to unravel the cosmic mystery of dark matter and dark energy"
+      }
+    },
+    {
       "id": "2023-08-00-arm-filed-for-a",
       "month": "2023-08",
       "domain": "business, markets, or technology",
@@ -358,6 +438,26 @@
       "source": {
         "url": "https://www.investing.com/news/world-news/death-toll-from-maui-fires-hits-at-least-80-damages-at-billions-of-dollars-3152973",
         "title": "Maui wildfires deadliest in century as death toll hits 93 By Reuters"
+      }
+    },
+    {
+      "id": "2023-08-03-brics-leaders-invited-argentina",
+      "month": "2023-08",
+      "domain": "world politics or policy",
+      "statement": "BRICS leaders invited Argentina, Egypt, Ethiopia, Iran, Saudi Arabia and the United Arab Emirates to join the bloc, its biggest expansion.",
+      "source": {
+        "url": "https://apnews.com/article/b5900168d165cc78b36d5d5c068b7a50",
+        "title": "Iran and Saudi Arabia are among 6 nations set to join China and Russia in the BRICS economic bloc"
+      }
+    },
+    {
+      "id": "2023-08-04-india-s-chandrayaan-3",
+      "month": "2023-08",
+      "domain": "science, space, or medicine",
+      "statement": "India’s Chandrayaan-3 spacecraft achieved the first soft landing near the Moon’s south pole, making India the fourth nation to land there.",
+      "source": {
+        "url": "https://science.nasa.gov/moon/missions/",
+        "title": "Moon Missions - NASA Science"
       }
     },
     {
@@ -401,6 +501,16 @@
       }
     },
     {
+      "id": "2023-09-04-india-s-parliament-gave",
+      "month": "2023-09",
+      "domain": "world politics or policy",
+      "statement": "India's parliament gave final approval to a constitutional amendment reserving one-third of seats in the lower house and state assemblies for women.",
+      "source": {
+        "url": "https://theprint.in/india/indian-parliament-sets-aside-33-of-seats-for-women/1772545/",
+        "title": "Indian parliament sets aside 33% of seats for women – ThePrint – ReutersFeed"
+      }
+    },
+    {
       "id": "2023-10-00-katalin-karik-and-drew",
       "month": "2023-10",
       "domain": "science, space, or medicine",
@@ -431,6 +541,26 @@
       }
     },
     {
+      "id": "2023-10-03-australians-rejected-a-constitutional",
+      "month": "2023-10",
+      "domain": "world politics or policy",
+      "statement": "Australians rejected a constitutional amendment creating an Indigenous Voice to Parliament, defeating Prime Minister Anthony Albanese’s signature reconciliation proposal in a national referendum.",
+      "source": {
+        "url": "https://www.reuters.com/world/asia-pacific/australia-voting-landmark-indigenous-voice-referendum-2023-10-13/",
+        "title": "Australia rejects Indigenous referendum in setback for reconciliation"
+      }
+    },
+    {
+      "id": "2023-10-04-nasa-launched-the-psyche",
+      "month": "2023-10",
+      "domain": "science, space, or medicine",
+      "statement": "NASA launched the Psyche spacecraft aboard a SpaceX Falcon Heavy, beginning the first mission to study the metal-rich asteroid 16 Psyche.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasas-psyche-spacecraft-optical-comms-demo-en-route-to-asteroid/",
+        "title": "NASA’s Psyche Spacecraft, Optical Comms Demo En Route to Asteroid"
+      }
+    },
+    {
       "id": "2023-11-00-authorities-evacuated-grindav-k",
       "month": "2023-11",
       "domain": "disasters, accidents, or extreme weather",
@@ -448,6 +578,36 @@
       "source": {
         "url": "https://en.wikipedia.org/wiki/2023_Dutch_general_election",
         "title": "2023 Dutch general election"
+      }
+    },
+    {
+      "id": "2023-11-02-argentine-voters-elected-libertarian",
+      "month": "2023-11",
+      "domain": "world politics or policy",
+      "statement": "Argentine voters elected libertarian outsider Javier Milei president after he defeated Economy Minister Sergio Massa in a runoff, jolting the country’s political establishment.",
+      "source": {
+        "url": "https://www.investing.com/news/economy/argentina-readies-to-vote-in-likely-presidential-election-thriller-3238364",
+        "title": "Argentine libertarian Milei pledges new political era after election win By Reuters"
+      }
+    },
+    {
+      "id": "2023-11-03-researchers-in-the-synthetic",
+      "month": "2023-11",
+      "domain": "science, space, or medicine",
+      "statement": "Researchers in the Synthetic Yeast Genome Project reported a viable yeast strain containing 7.5 artificial chromosomes, pushing a eukaryotic genome past fifty percent synthetic DNA.",
+      "source": {
+        "url": "https://www.nature.com/articles/d41586-023-03495-4",
+        "title": "Engineered yeast breaks new record: a genome with over 50% synthetic DNA"
+      }
+    },
+    {
+      "id": "2023-11-04-binance-founder-changpeng-zhao",
+      "month": "2023-11",
+      "domain": "business, markets, or technology",
+      "statement": "Binance founder Changpeng Zhao resigned and pleaded guilty to violating U.S. anti-money-laundering law as the exchange agreed to a $4.3 billion settlement.",
+      "source": {
+        "url": "https://www.justice.gov/archives/opa/pr/binance-and-ceo-plead-guilty-federal-charges-4b-resolution?trk=public_post_comment-text",
+        "title": "Binance and CEO Plead Guilty to Federal Charges in $4B Resolution | United States Department of Justice"
       }
     },
     {
@@ -481,6 +641,26 @@
       }
     },
     {
+      "id": "2023-12-03-javier-milei-signed-an",
+      "month": "2023-12",
+      "domain": "world politics or policy",
+      "statement": "Javier Milei signed an emergency decree rewriting more than 300 Argentine economic rules, lifting export limits and loosening regulations amid a severe crisis.",
+      "source": {
+        "url": "https://www.investing.com/news/forex-news/argentinas-milei-signs-decree-to-boost-exports-deregulation-3261232",
+        "title": "Argentina's Milei signs decree to boost exports, deregulation By Reuters"
+      }
+    },
+    {
+      "id": "2023-12-04-the-u-s-food",
+      "month": "2023-12",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration approved Casgevy, making Vertex and CRISPR Therapeutics’ treatment the first authorized CRISPR gene-editing therapy for sickle cell disease.",
+      "source": {
+        "url": "https://content.govdelivery.com/accounts/USFDA/bulletins/37efce0",
+        "title": "FDA Approves First Gene Therapies to Treat Patients with Sickle Cell Disease"
+      }
+    },
+    {
       "id": "2024-01-00-japan-became-the-fifth",
       "month": "2024-01",
       "domain": "science, space, or medicine",
@@ -511,6 +691,26 @@
       }
     },
     {
+      "id": "2024-01-03-bernardo-ar-valo-was",
+      "month": "2024-01",
+      "domain": "world politics or policy",
+      "statement": "Bernardo Arévalo was sworn in as Guatemala’s president after congressional allies of Attorney General Consuelo Porras delayed the transfer of power for hours.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/reformist-arevalo-sworn-in-as-guatemala-president-after-opponents-delay-inauguration-3274086",
+        "title": "Reformist Arevalo sworn in as Guatemala president after opponents delay inauguration By Reuters"
+      }
+    },
+    {
+      "id": "2024-01-04-the-world-health-organization",
+      "month": "2024-01",
+      "domain": "science, space, or medicine",
+      "statement": "The World Health Organization certified Cabo Verde malaria-free, recognizing Prime Minister Ulisses Correia e Silva’s government for eliminating indigenous transmission nationwide.",
+      "source": {
+        "url": "https://www.who.int/news/item/12-01-2024-who-certifies-cabo-verde-as-malaria-free--marking-a-historic-milestone-in-the-fight-against-malaria",
+        "title": "WHO certifies Cabo Verde as malaria-free, marking a historic milestone in the fight against malaria"
+      }
+    },
+    {
       "id": "2024-02-00-hungary-s-parliament-approved",
       "month": "2024-02",
       "domain": "world politics or policy",
@@ -528,6 +728,36 @@
       "source": {
         "url": "https://www.investing.com/news/stock-market-news/openai-introduces-ai-model-that-turns-text-into-video-3305559",
         "title": "OpenAI introduces AI model that turns text into video"
+      }
+    },
+    {
+      "id": "2024-02-02-candidates-backed-by-jailed",
+      "month": "2024-02",
+      "domain": "world politics or policy",
+      "statement": "Candidates backed by jailed former prime minister Imran Khan won the largest bloc in Pakistan’s National Assembly, upending expectations despite running as independents.",
+      "source": {
+        "url": "https://finance.yahoo.com/news/seen-abroad-pakistan-elections-disappoint-092051212.html",
+        "title": "Seen from abroad, Pakistan elections disappoint, add to instability"
+      }
+    },
+    {
+      "id": "2024-02-03-intuitive-machines-landed-odysseus",
+      "month": "2024-02",
+      "domain": "science, space, or medicine",
+      "statement": "Intuitive Machines landed Odysseus near the Moon’s south pole, achieving the first private lunar touchdown and the first U.S. moon landing since Apollo 17.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-nears-attempt-at-first-moon-landing-in-half-century-with-private-robot-spacecraft-3310970",
+        "title": "US achieves first moon landing in half century with private spacecraft By Reuters"
+      }
+    },
+    {
+      "id": "2024-02-04-nvidia-added-a-record",
+      "month": "2024-02",
+      "domain": "business, markets, or technology",
+      "statement": "Nvidia added a record $277 billion in market value after blockbuster results, overtaking Amazon and Alphabet to become Wall Street’s third-most valuable company.",
+      "source": {
+        "url": "https://finance.yahoo.com/news/ai-leader-nvidia-rises-forecast-095133308.html",
+        "title": "Nvidia adds record $277 billion in stock market value"
       }
     },
     {
@@ -568,6 +798,16 @@
       "source": {
         "url": "https://www.investing.com/news/world-news/francis-scott-key-bridge-disaster-reactions-3353192",
         "title": "Francis Scott Key bridge disaster reactions By Reuters"
+      }
+    },
+    {
+      "id": "2024-03-04-hong-kong-lawmakers-unanimously",
+      "month": "2024-03",
+      "domain": "world politics or policy",
+      "statement": "Hong Kong lawmakers unanimously passed a sweeping security law championed by John Lee, expanding treason, sedition, and state-secrets offenses in the Beijing-ruled city.",
+      "source": {
+        "url": "https://apnews.com/article/37e1aca2daef8a4f9f998f389ff3d7f5",
+        "title": "Hong Kong lawmakers unanimously approve security law giving government more power to curb dissent"
       }
     },
     {
@@ -651,6 +891,26 @@
       }
     },
     {
+      "id": "2024-05-03-the-united-nations-general",
+      "month": "2024-05",
+      "domain": "world politics or policy",
+      "statement": "The United Nations General Assembly voted 143–9 to back Palestine’s membership bid and expand its participation rights as a permanent observer state.",
+      "source": {
+        "url": "https://www.un.org/en/ga/sessions/emergency10th.shtml",
+        "title": "UN General Assembly - Tenth Emergency Special Sessions"
+      }
+    },
+    {
+      "id": "2024-05-04-mexico-reported-the-world",
+      "month": "2024-05",
+      "domain": "science, space, or medicine",
+      "statement": "Mexico reported the world’s first confirmed human H5N2 bird-flu infection after a 59-year-old resident died in Mexico City following respiratory illness.",
+      "source": {
+        "url": "https://www.who.int/emergencies/disease-outbreak-news/item/2024-DON520",
+        "title": "Human infection caused by avian Influenza A(H5N2)- Mexico"
+      }
+    },
+    {
       "id": "2024-06-00-nvidia-became-the-world",
       "month": "2024-06",
       "domain": "business, markets, or technology",
@@ -691,6 +951,16 @@
       }
     },
     {
+      "id": "2024-06-04-claudia-sheinbaum-won-mexico",
+      "month": "2024-06",
+      "domain": "world politics or policy",
+      "statement": "Claudia Sheinbaum won Mexico’s presidential election in a landslide, becoming the country’s first female president and extending Andrés Manuel López Obrador’s governing project.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/mexicos-sheinbaum-wins-landslide-to-become-countrys-first-woman-president-3466794",
+        "title": "Mexico's Sheinbaum wins landslide to become country's first woman president By Reuters"
+      }
+    },
+    {
       "id": "2024-07-00-spain-defeated-england-in",
       "month": "2024-07",
       "domain": "sport",
@@ -718,6 +988,26 @@
       "source": {
         "url": "https://www.investing.com/news/commodities-news/hurricane-beryl-expected-to-weaken-quickly-as-it-churns-across-texas-3509787",
         "title": "Storm Beryl kills three, knocks out power for 2.7 million in Texas"
+      }
+    },
+    {
+      "id": "2024-07-03-the-international-court-of",
+      "month": "2024-07",
+      "domain": "world politics or policy",
+      "statement": "The International Court of Justice said Israel’s presence in the occupied Palestinian territories was unlawful and should end as rapidly as possible.",
+      "source": {
+        "url": "https://www.icj-cij.org/index.php/node/204160",
+        "title": "Advisory Opinion of 19 July 2024 | INTERNATIONAL COURT OF JUSTICE"
+      }
+    },
+    {
+      "id": "2024-07-04-europe-s-new-heavy",
+      "month": "2024-07",
+      "domain": "science, space, or medicine",
+      "statement": "Europe’s new heavy-lift Ariane 6 rocket made a successful inaugural flight from French Guiana, restoring the continent’s independent access to space.",
+      "source": {
+        "url": "https://www.esa.int/Enabling_Support/Space_Transportation/Ariane/Europe_s_new_Ariane_6_rocket_powers_into_space",
+        "title": "Europe's new Ariane 6 rocket powers into space"
       }
     },
     {
@@ -811,6 +1101,16 @@
       }
     },
     {
+      "id": "2024-09-04-anura-kumara-dissanayake-won",
+      "month": "2024-09",
+      "domain": "world politics or policy",
+      "statement": "Anura Kumara Dissanayake won Sri Lanka’s presidential election after a historic second-preference count, defeating Sajith Premadasa as voters rejected established parties.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/sri-lankas-marxistleaning-dissanayake-in-early-lead-to-become-president-3626703",
+        "title": "Sri Lankans elect Marxist-leaning Dissanayake as president to fix economy By Reuters"
+      }
+    },
+    {
       "id": "2024-10-00-japan-s-ruling-liberal",
       "month": "2024-10",
       "domain": "world politics or policy",
@@ -848,6 +1148,16 @@
       "source": {
         "url": "https://www.investing.com/news/world-news/heavy-rains-cause-flash-floods-in-spains-south-east-3688947",
         "title": "Spanish floods kill 95 as year of rain falls in a day in Valencia By Reuters"
+      }
+    },
+    {
+      "id": "2024-10-04-georgia-s-ruling-georgian",
+      "month": "2024-10",
+      "domain": "world politics or policy",
+      "statement": "Georgia’s ruling Georgian Dream, led by Bidzina Ivanishvili, won a disputed parliamentary election with nearly 54% of votes, prompting opposition parties to reject the result.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/georgias-ruling-party-wins-disputed-election-as-monitors-report-violations-2331186",
+        "title": "Georgia's ruling party wins disputed election as monitors report violations – Reuters"
       }
     },
     {
@@ -921,6 +1231,36 @@
       }
     },
     {
+      "id": "2024-12-02-south-korea-s-national",
+      "month": "2024-12",
+      "domain": "world politics or policy",
+      "statement": "South Korea’s National Assembly impeached President Yoon Suk Yeol after lawmakers overturned his brief martial-law declaration, plunging one of Asia’s leading democracies into crisis.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2024",
+        "title": "2024 - Wikipedia"
+      }
+    },
+    {
+      "id": "2024-12-03-nasa-s-parker-solar",
+      "month": "2024-12",
+      "domain": "science, space, or medicine",
+      "statement": "NASA’s Parker Solar Probe flew about 3.8 million miles from the Sun’s surface at roughly 430,000 miles per hour, setting a record.",
+      "source": {
+        "url": "https://science.nasa.gov/science-research/heliophysics/eclipses-science-nasa-firsts-heliophysics-big-year-highlights/",
+        "title": "Eclipses, Science, NASA Firsts: Heliophysics Big Year Highlights - NASA Science"
+      }
+    },
+    {
+      "id": "2024-12-04-bitcoin-surged-past-100",
+      "month": "2024-12",
+      "domain": "business, markets, or technology",
+      "statement": "Bitcoin surged past $100,000 for the first time, capping a speculative rally that pushed the cryptocurrency’s market value near $2 trillion.",
+      "source": {
+        "url": "https://www.coindesk.com/markets/2024/12/05/bitcoin-crashed-below-94-k-in-sudden-plunge-from-record-perch-around-100-k/",
+        "title": "Bitcoin (BTC) Price Crashed Below $94K in Sudden Plunge From Record Perch Around $100K"
+      }
+    },
+    {
       "id": "2025-01-00-blue-origin-s-new",
       "month": "2025-01",
       "domain": "science, space, or medicine",
@@ -938,6 +1278,36 @@
       "source": {
         "url": "https://www.reuters.com/world/middle-east/lebanese-lawmakers-begin-second-attempt-elect-president-2025-01-09/",
         "title": "Lebanese lawmakers elect army chief Joseph Aoun as president"
+      }
+    },
+    {
+      "id": "2025-01-02-south-korean-investigators-arrested",
+      "month": "2025-01",
+      "domain": "world politics or policy",
+      "statement": "South Korean investigators arrested impeached President Yoon Suk Yeol on insurrection allegations, the first detention of a sitting president in the country’s history.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/south-korea-authorities-at-president-yoons-residence-to-execute-arrest-warrant-yonhap-says-3812605",
+        "title": "South Korean investigators question arrested President Yoon in insurrection probe By Reuters"
+      }
+    },
+    {
+      "id": "2025-01-03-spacex-s-starship-broke",
+      "month": "2025-01",
+      "domain": "science, space, or medicine",
+      "statement": "SpaceX’s Starship broke apart minutes after liftoff from Texas during its seventh test flight, forcing airliners over the Gulf of Mexico to divert.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/spacex-launches-seventh-starship-in-mock-satellite-deployment-test-3817843",
+        "title": "SpaceX's Starship explodes in flight test, forcing airlines to divert By Reuters"
+      }
+    },
+    {
+      "id": "2025-01-04-chinese-startup-deepseek-triggered",
+      "month": "2025-01",
+      "domain": "business, markets, or technology",
+      "statement": "Chinese startup DeepSeek triggered a sharp technology selloff as investors reassessed AI spending, sending U.S. power, utility, and natural gas shares plunging.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-power-stocks-plummet-as-deepseek-raises-data-center-demand-doubts-3833240",
+        "title": "US power stocks plummet as DeepSeek raises data center demand doubts By Reuters"
       }
     },
     {
@@ -981,6 +1351,16 @@
       }
     },
     {
+      "id": "2025-02-04-germany-s-conservative-cdu",
+      "month": "2025-02",
+      "domain": "world politics or policy",
+      "statement": "Germany’s conservative CDU/CSU bloc won the federal election, putting Friedrich Merz on course to replace Olaf Scholz as chancellor.",
+      "source": {
+        "url": "https://theprint.in/world/international-reaction-to-germanys-election/2508369/",
+        "title": "International reaction to Germany's election – ThePrint – ReutersFeed"
+      }
+    },
+    {
       "id": "2025-03-00-dna-testing-company-23andme",
       "month": "2025-03",
       "domain": "business, markets, or technology",
@@ -1008,6 +1388,26 @@
       "source": {
         "url": "https://www.investing.com/news/world-news/south-korea-battles-worst-ever-wildfires-as-death-toll-hits-26-3950785",
         "title": "South Korea battles worst ever wildfires as death toll hits 28 By Reuters"
+      }
+    },
+    {
+      "id": "2025-03-03-greenland-voters-made-the",
+      "month": "2025-03",
+      "domain": "world politics or policy",
+      "statement": "Greenland voters made the opposition Demokraatit party the largest in parliament, handing Jens-Frederik Nielsen a breakthrough win amid independence and U.S. pressure.",
+      "source": {
+        "url": "https://www.investing.com/news/commodities-news/greenland-election-tests-independence-ambitions-as-us-interest-looms-3919511",
+        "title": "Greenland’s independence gradualists win election amid Trump control pledge By Reuters"
+      }
+    },
+    {
+      "id": "2025-03-04-spacex-launched-nasa-s",
+      "month": "2025-03",
+      "domain": "science, space, or medicine",
+      "statement": "SpaceX launched NASA’s SPHEREx and PUNCH observatories from Vandenberg, beginning missions to map the cosmos and study the solar wind.",
+      "source": {
+        "url": "https://svs.gsfc.nasa.gov/14803/",
+        "title": "NASA SVS | NASA’s SPHEREX and PUNCH Missions Launch from Vandenberg Space Force Base"
       }
     },
     {
@@ -1081,6 +1481,36 @@
       }
     },
     {
+      "id": "2025-05-02-friedrich-merz-became-germany",
+      "month": "2025-05",
+      "domain": "world politics or policy",
+      "statement": "Friedrich Merz became Germany’s chancellor on a second Bundestag vote after an unprecedented first-round defeat exposed fractures in his coalition with the Social Democrats.",
+      "source": {
+        "url": "https://apnews.com/article/3aaeeb2b19de9373cb8668ce5d183afb",
+        "title": "Merz's stumble casts shadow over hopes for rebooting Germany's struggling economy"
+      }
+    },
+    {
+      "id": "2025-05-03-the-u-s-food",
+      "month": "2025-05",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration cleared Fujirebio Diagnostics’ Lumipulse blood test, the first blood-based diagnostic authorized to help detect Alzheimer’s-related amyloid plaques.",
+      "source": {
+        "url": "https://www.fda.gov/news-events/press-announcements/fda-clears-first-blood-test-used-diagnosing-alzheimers-disease",
+        "title": "FDA Clears First Blood Test Used in Diagnosing Alzheimer’s Disease"
+      }
+    },
+    {
+      "id": "2025-05-04-salesforce-agreed-to-acquire",
+      "month": "2025-05",
+      "domain": "business, markets, or technology",
+      "statement": "Salesforce agreed to acquire Informatica for about $8 billion, aiming to strengthen its AI data infrastructure through Informatica’s cloud data management products.",
+      "source": {
+        "url": "https://sst-www.informatica.com.edgekey.net/content/informatica-www/en_us/about-us/news/news-releases/2025/05/20250527-salesforce-signs-definitive-agreement-to-acquire-informatica.html",
+        "title": "Salesforce Signs Definitive Agreement to Acquire Informatica"
+      }
+    },
+    {
       "id": "2025-06-00-the-nsf-doe-vera",
       "month": "2025-06",
       "domain": "science, space, or medicine",
@@ -1108,6 +1538,26 @@
       "source": {
         "url": "https://www.reuters.com/world/asia-pacific/liberal-lee-jae-myung-wins-south-koreas-presidential-election-2025-06-03/",
         "title": "Liberal Lee Jae-myung wins South Korea's presidential election"
+      }
+    },
+    {
+      "id": "2025-06-03-geert-wilders-withdrew-the",
+      "month": "2025-06",
+      "domain": "world politics or policy",
+      "statement": "Geert Wilders withdrew the PVV from the Dutch governing coalition, and Prime Minister Dick Schoof submitted the cabinet’s resignation, triggering a caretaker government.",
+      "source": {
+        "url": "https://www.government.nl/latest/news/2025/06/03/prime-minister-schoof-tenders-governments-resignation",
+        "title": "Prime Minister Schoof tenders government’s resignation | Government.nl"
+      }
+    },
+    {
+      "id": "2025-06-04-the-u-s-food",
+      "month": "2025-06",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration approved Gilead’s twice-yearly lenacapavir injection, branded Yeztugo, for HIV prevention in adults and adolescents.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-fda-approves-gileads-twiceyearly-injection-for-hiv-prevention-4101979",
+        "title": "US FDA approves Gilead’s twice-yearly injection for HIV prevention By Reuters"
       }
     },
     {
@@ -1141,6 +1591,26 @@
       }
     },
     {
+      "id": "2025-07-03-suriname-s-national-assembly",
+      "month": "2025-07",
+      "domain": "world politics or policy",
+      "statement": "Suriname’s National Assembly elected Jennifer Geerlings-Simons president, making the National Democratic Party leader the country’s first woman head of state.",
+      "source": {
+        "url": "https://apnews.com/article/5021dee4aba90068bb7f1ba5155fa5ac",
+        "title": "Suriname's parliament elects the country's first female president amid economic turmoil"
+      }
+    },
+    {
+      "id": "2025-07-04-nasa-and-isro-launched",
+      "month": "2025-07",
+      "domain": "science, space, or medicine",
+      "statement": "NASA and ISRO launched the NISAR Earth-observing satellite, the agencies’ first joint mission, to track shifting land and ice surfaces worldwide.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasa-isro-satellite-lifts-off-to-track-earths-changing-surfaces/",
+        "title": "NASA-ISRO Satellite Lifts Off to Track Earth’s Changing Surfaces"
+      }
+    },
+    {
       "id": "2025-08-00-thailand-s-constitutional-court",
       "month": "2025-08",
       "domain": "world politics or policy",
@@ -1168,6 +1638,16 @@
       "source": {
         "url": "https://www.reuters.com/world/azerbaijan-armenia-sign-peace-agreement-white-house-says-2025-08-08/",
         "title": "Trump announces peace agreement between Azerbaijan and Armenia"
+      }
+    },
+    {
+      "id": "2025-08-03-the-world-health-organization",
+      "month": "2025-08",
+      "domain": "science, space, or medicine",
+      "statement": "The World Health Organization recommended spatial emanators for malaria control and prequalified SC Johnson’s Mosquito Shield and Guardian, creating a new intervention class.",
+      "source": {
+        "url": "https://www.who.int/news/item/13-08-2025-who-recommends-spatial-emanators-for-malaria-vector-control-and-prequalifies-first-two-products",
+        "title": "WHO recommends spatial emanators for malaria vector control and prequalifies first two products"
       }
     },
     {
@@ -1201,6 +1681,26 @@
       }
     },
     {
+      "id": "2025-09-03-young-anti-corruption-demonstrators",
+      "month": "2025-09",
+      "domain": "world politics or policy",
+      "statement": "Young anti-corruption demonstrators forced Nepal Prime Minister K.P. Sharma Oli to resign after deadly unrest spread through Kathmandu despite an indefinite curfew.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/nepal-pm-oli-resigns-after-violent-anticorruption-protests-his-aide-says-4230734",
+        "title": "Nepal PM Oli resigns after violent anti-corruption protests, his aide says"
+      }
+    },
+    {
+      "id": "2025-09-04-the-u-s-food",
+      "month": "2025-09",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration approved Johnson & Johnson’s Inlexzo for high-risk bladder cancer patients refusing or ineligible for bladder removal surgery.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-fda-approves-jjs-bladder-cancer-treatment-4232202",
+        "title": "US FDA approves J&J’s bladder cancer treatment"
+      }
+    },
+    {
       "id": "2025-10-00-shohei-ohtani-reached-base",
       "month": "2025-10",
       "domain": "sport",
@@ -1218,6 +1718,36 @@
       "source": {
         "url": "https://www.reuters.com/world/asia-pacific/inspired-by-thatcher-sanae-takaichi-becomes-japans-first-female-premier-2025-10-21/",
         "title": "Inspired by Thatcher, Sanae Takaichi becomes Japan’s first female premier"
+      }
+    },
+    {
+      "id": "2025-10-02-andrej-babi-s-ano",
+      "month": "2025-10",
+      "domain": "world politics or policy",
+      "statement": "Andrej Babiš’s ANO movement won the Czech parliamentary election, positioning the country toward a more populist government and reduced support for Ukraine.",
+      "source": {
+        "url": "https://www.gulf-times.com/pdf/2025/10/05/main-20251005-1.pdf?ts=003734",
+        "title": "Gulf Times – Reuters: Billionaire Andrej Babis’s ANO party cruised to victory in the Czech Republic’s parliamentary election"
+      }
+    },
+    {
+      "id": "2025-10-03-john-clarke-michel-devoret",
+      "month": "2025-10",
+      "domain": "science, space, or medicine",
+      "statement": "John Clarke, Michel Devoret and John Martinis won the Nobel Physics Prize for experiments revealing quantum behavior in electric circuits, advancing next-generation digital technologies.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/clarke-devoret-and-martinis-win-2025-nobel-prize-in-physics-4274384",
+        "title": "Reuters via Investing.com: Trio win Nobel prize for revealing quantum physics in action"
+      }
+    },
+    {
+      "id": "2025-10-04-microsoft-and-openai-agreed",
+      "month": "2025-10",
+      "domain": "business, markets, or technology",
+      "statement": "Microsoft and OpenAI agreed a restructuring deal valuing OpenAI at $500 billion, freeing the ChatGPT maker to move beyond nonprofit constraints.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/microsoft-openai-reach-new-deal-to-allow-openai-to-restructure-4313587",
+        "title": "Reuters via Investing.com: Microsoft, OpenAI reach deal removing fundraising constraints for ChatGPT maker"
       }
     },
     {
@@ -1291,6 +1821,36 @@
       }
     },
     {
+      "id": "2025-12-02-israel-became-the-first",
+      "month": "2025-12",
+      "domain": "world politics or policy",
+      "statement": "Israel became the first United Nations member state to recognize Somaliland as independent, after Prime Minister Benjamin Netanyahu announced the decision.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2025_in_politics",
+        "title": "2025 in politics"
+      }
+    },
+    {
+      "id": "2025-12-03-nasa-astronaut-jonny-kim",
+      "month": "2025-12",
+      "domain": "science, space, or medicine",
+      "statement": "NASA astronaut Jonny Kim returned to Earth with Sergey Ryzhikov and Alexey Zubritsky after an eight-month International Space Station research mission.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasa-astronaut-jonny-kim-crewmates-return-from-space-station/",
+        "title": "NASA Astronaut Jonny Kim, Crewmates Return from Space Station"
+      }
+    },
+    {
+      "id": "2025-12-04-nasa-s-spherex-team",
+      "month": "2025-12",
+      "domain": "business, markets, or technology",
+      "statement": "NASA’s SPHEREx team released the mission’s first all-sky map, giving astronomers infrared coverage of the entire sky in 102 wavelengths.",
+      "source": {
+        "url": "https://science.data.nasa.gov/features-events/data-software-highlights-december-2025",
+        "title": "December 2025 Science Data and Software Highlights"
+      }
+    },
+    {
       "id": "2026-01-00-bytedance-finalized-a-majority",
       "month": "2026-01",
       "domain": "business, markets, or technology",
@@ -1321,6 +1881,26 @@
       }
     },
     {
+      "id": "2026-01-03-the-united-states-completed",
+      "month": "2026-01",
+      "domain": "world politics or policy",
+      "statement": "The United States completed its withdrawal from the World Health Organization, with Robert F. Kennedy Jr. and Marco Rubio announcing the termination of membership.",
+      "source": {
+        "url": "https://www.hhs.gov/press-room/united-states-completes-who-withdrawal.html",
+        "title": "United States Completes WHO Withdrawal | HHS.gov"
+      }
+    },
+    {
+      "id": "2026-01-04-nasa-s-pandora-exoplanet",
+      "month": "2026-01",
+      "domain": "science, space, or medicine",
+      "statement": "NASA’s Pandora exoplanet satellite lifted off from Vandenberg Space Force Base aboard SpaceX’s Twilight rideshare mission to study alien worlds and host stars.",
+      "source": {
+        "url": "https://science.nasa.gov/universe/exoplanets/nasas-pandora-satellite-cubesats-to-explore-exoplanets-beyond/",
+        "title": "NASA’s Pandora Satellite, CubeSats to Explore Exoplanets, Beyond - NASA Science"
+      }
+    },
+    {
       "id": "2026-02-00-amd-and-meta-announced",
       "month": "2026-02",
       "domain": "business, markets, or technology",
@@ -1348,6 +1928,26 @@
       "source": {
         "url": "https://www.grammy.com/awards/categories/album-of-the-year/",
         "title": "Album Of The Year Grammy Award Winners & Nominees"
+      }
+    },
+    {
+      "id": "2026-02-03-conservative-populist-laura-fern",
+      "month": "2026-02",
+      "domain": "world politics or policy",
+      "statement": "Conservative populist Laura Fernández won Costa Rica’s presidency in a first-round victory, extending Rodrigo Chaves’ political project and avoiding a runoff.",
+      "source": {
+        "url": "https://apnews.com/article/costa-rica-election-results-fernandez-chaves-f072f4e01cde74a2f037072cc03293d5",
+        "title": "Conservative populist Laura Fernández wins Costa Rican presidency, preliminary results show"
+      }
+    },
+    {
+      "id": "2026-02-04-nasa-and-spacex-launched",
+      "month": "2026-02",
+      "domain": "science, space, or medicine",
+      "statement": "NASA and SpaceX launched Crew-12 to the International Space Station, carrying Jessica Meir, Jack Hathaway, Sophie Adenot, and Andrey Fedyaev.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasas-spacex-crew-12-launches-to-international-space-station/",
+        "title": "NASA’s SpaceX Crew-12 Launches to International Space Station"
       }
     },
     {
@@ -1391,6 +1991,16 @@
       }
     },
     {
+      "id": "2026-03-04-australia-and-the-european",
+      "month": "2026-03",
+      "domain": "world politics or policy",
+      "statement": "Australia and the European Union concluded a long-delayed free trade agreement, capping eight years of negotiations and cutting tariffs on nearly all goods.",
+      "source": {
+        "url": "https://www.eeas.europa.eu/delegations/australia/eu-and-australia-strengthen-relations-security-and-defence-partnership-and-trade-agreement_en",
+        "title": "EU and Australia strengthen relations with Security and Defence Partnership and Trade Agreement | EEAS"
+      }
+    },
+    {
       "id": "2026-04-00-ucla-defeated-south-carolina",
       "month": "2026-04",
       "domain": "sport",
@@ -1408,6 +2018,36 @@
       "source": {
         "url": "https://apnews.com/article/nasa-artemis-moonshot-launch-d4cee0936115bb4d995272f7e1b921c4",
         "title": "NASA clears its Artemis moon rocket for an April launch with four astronauts following repairs"
+      }
+    },
+    {
+      "id": "2026-04-02-p-ter-magyar-s",
+      "month": "2026-04",
+      "domain": "world politics or policy",
+      "statement": "Péter Magyar’s Tisza Party won a two-thirds parliamentary majority, toppling Viktor Orbán and ending Fidesz rule after sixteen years in Hungary.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/hungarians-look-to-changed-future-after-proeu-magyars-election-landslide-4610112",
+        "title": "Hungarian election winner Magyar vows democratic shift with eye on EU funds"
+      }
+    },
+    {
+      "id": "2026-04-03-the-u-s-food",
+      "month": "2026-04",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration approved Merck’s once-daily oral combination HIV regimen, clearing a new treatment option for infected patients.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-fda-approves-mercks-combination-hiv-treatment-4626858",
+        "title": "US FDA approves Merck’s combination HIV treatment"
+      }
+    },
+    {
+      "id": "2026-04-04-china-blocked-meta-s",
+      "month": "2026-04",
+      "domain": "business, markets, or technology",
+      "statement": "China blocked Meta’s acquisition of AI startup Manus, forcing the parties to unwind a deal Beijing said raised foreign-investment security concerns.",
+      "source": {
+        "url": "https://apnews.com/article/5f8012791f86f719a24a3ebac06d9b0a",
+        "title": "China blocks Meta from acquiring startup Manus as global AI rivalry deepens"
       }
     },
     {
@@ -1451,6 +2091,16 @@
       }
     },
     {
+      "id": "2026-05-04-hungary-s-parliament-swore",
+      "month": "2026-05",
+      "domain": "world politics or policy",
+      "statement": "Hungary’s parliament swore in Péter Magyar as prime minister, ending Viktor Orbán’s 16-year rule and launching a pro-European political transition.",
+      "source": {
+        "url": "https://apnews.com/article/hungary-peter-magyar-inauguration-orban-a12b25cb022dedb777a54686e59c65a8",
+        "title": "Hungary’s Péter Magyar sworn in as prime minister, ending Viktor Orbán’s 16-year rule"
+      }
+    },
+    {
       "id": "2026-06-00-european-union-leaders-met",
       "month": "2026-06",
       "domain": "world politics or policy",
@@ -1491,6 +2141,16 @@
       }
     },
     {
+      "id": "2026-06-04-presidents-donald-trump-and",
+      "month": "2026-06",
+      "domain": "world politics or policy",
+      "statement": "Presidents Donald Trump and Masoud Pezeshkian signed an interim accord ending U.S.-Iran hostilities, with Pakistan mediating and G7 leaders publicly welcoming the breakthrough.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/g7-leaders-demand-ceasefire-in-lebanon-welcome-iran-deal-4746636",
+        "title": "US and Iran presidents sign ceasefire agreement, but Trump says he could still resume attacks By Reuters"
+      }
+    },
+    {
       "id": "2026-07-00-viktor-orban-declared-a",
       "month": "2026-07",
       "domain": "world politics or policy",
@@ -1508,6 +2168,36 @@
       "source": {
         "url": "https://apnews.com/article/b33731a50f23433644bd8a879dcffc75",
         "title": "Fire breaks out on Brooklyn Bridge during New York's fireworks show"
+      }
+    },
+    {
+      "id": "2026-07-02-britain-spain-the-european",
+      "month": "2026-07",
+      "domain": "world politics or policy",
+      "statement": "Britain, Spain, the European Union and Gibraltar opened free movement across the frontier, removing the border fence after years of post-Brexit negotiations.",
+      "source": {
+        "url": "https://apnews.com/article/9113dd58dc8220826038022e84e3b662",
+        "title": "Gibraltar ushers in a new era as British territory's border fence with Spain is removed"
+      }
+    },
+    {
+      "id": "2026-07-03-the-fda-approved-merck",
+      "month": "2026-07",
+      "domain": "science, space, or medicine",
+      "statement": "The FDA approved Merck’s Lipfendra, the first oral PCSK9 inhibitor, giving adults with hypercholesterolemia a non-injectable option to lower LDL cholesterol.",
+      "source": {
+        "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-oral-pcsk9-inhibitor-lower-ldl-cholesterol-adults-high-cholesterol",
+        "title": "FDA Approves First Oral PCSK9 Inhibitor to Lower LDL Cholesterol in Adults with High Cholesterol"
+      }
+    },
+    {
+      "id": "2026-07-04-jaxa-s-hayabusa2-completed",
+      "month": "2026-07",
+      "domain": "business, markets, or technology",
+      "statement": "JAXA’s Hayabusa2 completed a flyby of asteroid Torifune, delivering one of humanity’s first close-up views of a previously unvisited Solar System object.",
+      "source": {
+        "url": "https://pd.jaxa.jp/index_en.html",
+        "title": "JAXA Planetary Defense Team"
       }
     }
   ]

@@ -19,6 +19,7 @@
  * curves stay comparable); editing or removing existing items is not —
  * bump `version` and publish a new file instead.
  */
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -247,6 +248,23 @@ export function assembleItems(
     })
   }
   return items
+}
+
+/**
+ * Content fingerprint of the event pool.
+ *
+ * The version string is a human label and survives an append, but an
+ * append changes the exam: every item's wrong answers are drawn from the
+ * whole pool, so adding a month rewrites questions in every other month
+ * too. Comparability has to key on content, not on what someone called
+ * it — topping the bank up from 146 to 215 events left the label
+ * `2026-08-v2` on both, and a version check alone would have let two
+ * different measurements into one chart.
+ */
+export function bankHash(bank: QuizBank): string {
+  const h = createHash("sha256")
+  for (const id of bank.events.map((e) => e.id).sort()) h.update(id)
+  return h.digest("hex").slice(0, 12)
 }
 
 // ── Load + validate ──────────────────────────────────────────────────

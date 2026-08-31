@@ -41,6 +41,7 @@ import { getKeyUsage } from "./openrouter.ts"
 import {
   DEFAULT_BANK_PATH,
   DEFAULT_MONTH_GAP,
+  bankHash,
   QuizBankError,
   itemsForMonths,
   loadQuizBank,
@@ -770,6 +771,7 @@ async function cmdCutoff(args: Args) {
     return true
   })
   const monthGap = Number(args.gap ?? DEFAULT_MONTH_GAP)
+  const quizHash = bankHash(bank)
   let items = itemsForMonths(bank, windowMonths, monthGap)
   const perMonth = args["per-month"] ? Number(args["per-month"]) : undefined
   if (perMonth) {
@@ -794,7 +796,7 @@ async function cmdCutoff(args: Args) {
   console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
   console.log(
     pc.dim(
-      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way, ${monthGap}-month gap) · quiz ${bank.version}`
+      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way, ${monthGap}-month gap) · quiz ${bank.version}#${quizHash}`
     )
   )
   console.log(
@@ -825,7 +827,7 @@ async function cmdCutoff(args: Args) {
         // older bank is not comparable with a fresh one, and silently
         // mixing them would put two different measurements in one chart.
         const sameQuiz =
-          prior.quiz_version === bank.version && prior.month_gap === monthGap
+          prior.quiz_hash === quizHash && prior.month_gap === monthGap
         if (sameQuiz) {
           results.push(prior)
           console.log(pc.dim(`  ${model} — reused`))
@@ -833,7 +835,7 @@ async function cmdCutoff(args: Args) {
         }
         console.log(
           pc.yellow(
-            `  ${model} — re-probing: answered quiz ${prior.quiz_version}/gap ${prior.month_gap}, current is ${bank.version}/gap ${monthGap}`
+            `  ${model} — re-probing: answered quiz ${prior.quiz_version}#${prior.quiz_hash ?? "?"}/gap ${prior.month_gap}, current is ${bank.version}#${quizHash}/gap ${monthGap}`
           )
         )
       } catch {
@@ -869,6 +871,7 @@ async function cmdCutoff(args: Args) {
       model,
       probed_at: new Date().toISOString(),
       quiz_version: bank.version,
+      quiz_hash: quizHash,
       month_gap: monthGap,
       quiz,
       ...(self_report ? { self_report } : {}),
@@ -901,7 +904,7 @@ async function cmdCutoff(args: Args) {
       ? { billed_actual_usd: Math.max(0, usageAtEnd - usageAtStart) }
       : {}),
   }
-  const mixed = [...new Set(results.map((r) => `${r.quiz_version}/${r.month_gap}`))]
+  const mixed = [...new Set(results.map((r) => `${r.quiz_hash}/${r.month_gap}`))]
   if (mixed.length > 1) {
     console.log(
       pc.yellow(

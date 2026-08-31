@@ -139,6 +139,8 @@ export type ModelCutoff = {
    * the same exam as the others, and comparing them would be wrong.
    */
   quiz_version: string
+  /** Fingerprint of the event pool — the label alone survives an append. */
+  quiz_hash: string
   month_gap: number
   quiz: QuizProbe
   self_report?: SelfReportProbe

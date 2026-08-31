@@ -173,7 +173,9 @@ It's a long run against grounded models, so it's built to be interrupted: each m
 
 Output is `data/cutoff-quiz.json`, **committed** — every model must answer the same questions for the numbers to mean anything. `auditBank` reports, after every build, how often the true answer is the longest or shortest option; anything much above chance means the events aren't written to one standard and the bank needs work.
 
-Re-running **appends**: months already in the bank are left byte-identical, so the quarterly "extend the tail" refresh and resuming an interrupted build both cost only what's missing, and previously published curves stay valid.
+Re-running **appends**: months already in the bank are left byte-identical, so the quarterly "extend the tail" refresh and resuming an interrupted build both cost only what's missing.
+
+Appending does, however, change the exam. Every question's wrong answers are drawn from the whole event pool, so adding a month rewrites items in every other month too — a model probed before the append has not answered the same questions as one probed after. Each result records a fingerprint of the pool it answered; `pnpm cutoff` re-probes any model whose fingerprint no longer matches and refuses to publish a report that mixes two. Budget for re-probing the cohort whenever you extend the bank.
 
 ### Run the probe
 
@@ -187,7 +189,7 @@ pnpm cutoff --per-month 3 --no-identity   # cheaper
 
 By default it probes exactly the cohort of an existing benchmark run, so cutoff rows line up 1:1 with leaderboard rows. Results land in `results/<run-id>/cutoff.json` (plus one file per model under `cutoff/`, reused on re-runs unless you pass `--refresh`). `bench:publish` picks the report up automatically.
 
-**Cost:** one short call per question per model. Measured: $0.02 for `gpt-4.1-mini` and $0.11 for `gpt-4.1` over 146 questions.
+**Cost:** one short call per question per model. Measured over 146 questions: $0.02 for `gpt-4.1-mini`, $0.11 for `gpt-4.1`. Reasoning models cost several times more, since they think before answering a one-letter question.
 
 ## Cost discipline
 
