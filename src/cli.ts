@@ -40,6 +40,7 @@ import { evaluateRun, makeCaches } from "./evaluate.ts"
 import { getKeyUsage } from "./openrouter.ts"
 import {
   DEFAULT_BANK_PATH,
+  DEFAULT_MONTH_GAP,
   QuizBankError,
   itemsForMonths,
   loadQuizBank,
@@ -698,6 +699,7 @@ async function cmdReport(args: Args) {
  *   --quiz <path>       quiz bank (default: data/cutoff-quiz.json)
  *   --from / --to       restrict the month window
  *   --per-month <n>     cap questions per month (default: all in the bank)
+ *   --gap <n>           months between an item and its wrong answers (default 9)
  *   --no-self-report    skip the "what month is it" probe
  *   --no-identity       skip the "what model are you" probe
  *   --refresh           re-probe models that already have a result file
@@ -767,7 +769,8 @@ async function cmdCutoff(args: Args) {
     if (typeof args.to === "string" && monthOrdinal(m) > monthOrdinal(args.to)) return false
     return true
   })
-  let items = itemsForMonths(bank, windowMonths)
+  const monthGap = Number(args.gap ?? DEFAULT_MONTH_GAP)
+  let items = itemsForMonths(bank, windowMonths, monthGap)
   const perMonth = args["per-month"] ? Number(args["per-month"]) : undefined
   if (perMonth) {
     const taken = new Map<string, number>()
@@ -791,7 +794,7 @@ async function cmdCutoff(args: Args) {
   console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
   console.log(
     pc.dim(
-      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way) · quiz ${bank.version}`
+      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way, ${monthGap}-month gap) · quiz ${bank.version}`
     )
   )
   console.log(

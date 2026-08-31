@@ -220,7 +220,7 @@ test("an empty bank is structurally valid but not loadable", async () => {
     builder_model: "m",
     n_options: 8,
     months: [],
-    items: [],
+    events: [],
   }
   assert.doesNotThrow(() => validateBank(empty))
 
@@ -231,61 +231,58 @@ test("an empty bank is structurally valid but not loadable", async () => {
   writeFileSync(path, JSON.stringify(empty))
   assert.throws(() => loadQuizBank(path), (e: unknown) => {
     assert.ok(e instanceof QuizBankError)
-    assert.match((e as Error).message, /no items/)
+    assert.match((e as Error).message, /no events/)
     return true
   })
 })
 
-test("distractor selection brackets the true statement by length", async () => {
-  // Length is the tell that shows up in practice: a real event is stated
-  // plainly, an invented one gets embellished. If the true option is the
-  // longest, "pick the longest" beats guessing and every model's plateau
-  // — and so every estimated cutoff — moves.
-  const { selectDistractors } = await import("./build-quiz.ts")
-  const fact = "x".repeat(150)
-  const distractors = [160, 170, 180, 190, 200, 140, 130, 120, 110].map((n) => "y".repeat(n))
-  const picked = selectDistractors(fact, distractors, 7)
-  assert.ok("chosen" in picked)
-  const lens = picked.chosen.map((d) => d.length)
-  assert.equal(picked.chosen.length, 7)
-  assert.ok(Math.max(...lens) > fact.length, "needs a longer distractor")
-  assert.ok(Math.min(...lens) < fact.length, "needs a shorter distractor")
-
-  // Impossible bracket is rejected rather than shipped with the tell.
-  const allLonger = [200, 210, 220, 230, 240, 250, 260].map((n) => "y".repeat(n))
-  assert.ok("reject" in selectDistractors(fact, allLonger, 7))
-})
-
-test("a leaky quiz (floor above chance) is still dated correctly", () => {
-  // Real measurement that motivated the measured floor: gpt-4.1-mini,
-  // documented cutoff June 2024, answered events from 2025-2026 at 54%
-  // against a 12.5% chance rate, because distractors that invent entity
-  // names can be ruled out without knowing the month. Anchoring the
-  // threshold on chance never crosses such a curve and dates the model at
-  // the window edge.
-  const LEAK = 0.54
-  const series = Array.from({ length: 30 }, (_, i) => {
-    if (i <= 17) return 0.85
-    const t = Math.min(1, (i - 17) / 4)
-    return 0.85 + (LEAK - 0.85) * t
-  })
-  const { estimate, reason } = estimateCutoff(buckets("2023-01", series), N_OPTIONS)
-  assert.equal(reason, undefined)
-  assert.ok(estimate, "a leaky curve still has a readable decline")
-  assert.ok(estimate!.floor > estimate!.chance, "floor should be measured, not assumed")
-  const ord = monthOrdinal(estimate!.month)
-  assert.ok(
-    ord >= monthOrdinal("2024-07") && ord <= monthOrdinal("2024-10"),
-    `estimate ${estimate!.month} should sit at the decline, not the window edge`
+test("assembled items use only real events, from far-enough months", async () => {
+  // The property the whole measurement rests on. Fabricated wrong answers
+  // are detectable without knowing the date, however they are written:
+  // gpt-4.1-mini (cutoff 2024-06) scored 40% on invented entity names and
+  // 72% on real entities in false claims, against 12.5% chance. Drawing
+  // the wrong answers from other months' REAL events put it at 6%.
+  const { assembleItems } = await import("./cutoff-quiz.ts")
+  const events = monthRange("2023-01", "2025-12").flatMap((month, i) =>
+    ["politics", "science"].map((domain) => ({
+      id: `${month}-${domain}`,
+      month,
+      domain,
+      statement: `event ${i} ${domain} in ${month}`,
+    }))
   )
+  const items = assembleItems(events, { nOptions: 8, minMonthGap: 9 })
+  assert.ok(items.length > 0)
+
+  const byStatement = new Map(events.map((e) => [e.statement, e]))
+  for (const item of items) {
+    assert.equal(item.options.length, 8)
+    assert.equal(new Set(item.options).size, 8, "no option may repeat")
+    for (const [i, opt] of item.options.entries()) {
+      const source = byStatement.get(opt)
+      assert.ok(source, `every option must be a real event: ${opt}`)
+      if (i === item.answer) {
+        assert.equal(source.month, item.month, "the answer is this month's event")
+      } else {
+        const gap = Math.abs(monthOrdinal(source.month) - monthOrdinal(item.month))
+        assert.ok(gap >= 9, `wrong answers must be >= 9 months away, got ${gap}`)
+      }
+    }
+  }
+
+  // Same pool, same quiz — models must face identical questions.
+  const again = assembleItems(events, { nOptions: 8, minMonthGap: 9 })
+  assert.deepEqual(items, again)
 })
 
-test("a flat high curve is 'no decline', a flat chance curve is 'no signal'", () => {
-  const high = estimateCutoff(buckets("2023-01", Array(30).fill(0.85)), N_OPTIONS)
-  assert.equal(high.estimate, null)
-  assert.equal(high.reason, "no-decline-in-window")
-
-  const flat = estimateCutoff(buckets("2023-01", Array(30).fill(CHANCE + 0.02)), N_OPTIONS)
-  assert.equal(flat.estimate, null)
-  assert.equal(flat.reason, "no-signal")
+test("assembly skips items the pool is too thin to build", async () => {
+  const { assembleItems } = await import("./cutoff-quiz.ts")
+  const events = ["2024-01", "2024-02"].map((month) => ({
+    id: month,
+    month,
+    domain: "politics",
+    statement: `event in ${month}`,
+  }))
+  // Two events a month apart cannot fill an 8-way item at a 9-month gap.
+  assert.deepEqual(assembleItems(events, { nOptions: 8, minMonthGap: 9 }), [])
 })

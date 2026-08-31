@@ -54,11 +54,11 @@ import {
   monthLabel,
   monthOrdinal,
   monthRange,
+  assembleItems,
   auditBank,
   shuffleOptions,
   validateBank,
   type QuizBank,
-  type QuizItem,
 } from "./cutoff-quiz.ts"
 
 const DEFAULT_BUILDER = "openai/gpt-5.4:online"
@@ -90,39 +90,36 @@ const DRAFT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    items: {
+    events: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          fact: { type: "string" },
-          distractors: { type: "array", items: { type: "string" } },
+          statement: { type: "string" },
           domain: { type: "string" },
           source_url: { type: "string" },
           source_title: { type: "string" },
         },
-        required: ["fact", "distractors", "domain", "source_url", "source_title"],
+        required: ["statement", "domain", "source_url", "source_title"],
       },
     },
   },
-  required: ["items"],
+  required: ["events"],
 }
 
 const VERIFY_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    fact_confirmed: { type: "boolean" },
-    any_distractor_real: { type: "boolean" },
+    confirmed: { type: "boolean" },
     reason: { type: "string" },
   },
-  required: ["fact_confirmed", "any_distractor_real", "reason"],
+  required: ["confirmed", "reason"],
 }
 
-type DraftItem = {
-  fact: string
-  distractors: string[]
+type DraftEvent = {
+  statement: string
   domain: string
   source_url: string
   source_title: string
@@ -131,7 +128,6 @@ type DraftItem = {
 function draftPrompt(
   month: string,
   count: number,
-  nOptions: number,
   avoid: string[] = []
 ): string {
   const domains = DOMAINS.slice(0, count).join("; ")
@@ -143,71 +139,43 @@ function draftPrompt(
           .join("\n")}\n`
   return `Search the web for notable events from ${monthLabel(month)}.
 ${exclusion}
+Produce ${count} statements, each describing a DIFFERENT thing that actually
+happened in ${monthLabel(month)}.
 
-Produce ${count} quiz items. Each item is one TRUE statement about something that
-actually happened in ${monthLabel(month)}, plus ${nOptions + 1} FALSE statements.
-(That is more false statements than the quiz uses — extras are selected from, so
-write all of them to the same standard.)
+Spread them across these domains, one each where possible: ${domains}.
 
-Spread the items across these domains, one each where possible: ${domains}.
-
-Rules for the TRUE statement:
-- It must be well documented — the kind of event a Wikipedia "${monthLabel(month)}" or
-  "${month.slice(0, 4)} in review" page records. Give the source URL you used.
+Rules:
+- Each must be well documented — the kind of event a Wikipedia
+  "${monthLabel(month)}" or "${month.slice(0, 4)} in review" page records. Give the
+  source URL you used for each.
 - It must have happened in ${monthLabel(month)}, not the month before or after.
 - Prefer outcomes that could NOT have been confidently predicted a year earlier.
-  The result of a scheduled event is good; the fact that a scheduled event was
-  scheduled is not.
-
-Rules for the FALSE statements (this is the part that decides whether the quiz
-measures anything):
-- EVERY named entity must be REAL and recognisable: real people, real
-  organisations, real missions, real products, real places. NEVER invent a name.
-  A reader who has never heard of "the Helioscope mission" can rule it out
-  without knowing what happened that month — that is recognition, not knowledge,
-  and it makes the whole item worthless. Reuse the real entities from the true
-  statement and its neighbours.
-- Build the falsehood by changing WHAT HAPPENED to real entities: flip the
-  outcome, swap which real party did it, change the direction or the magnitude,
-  pair two real entities that were not involved with each other. Never by
-  inventing who it happened to.
-- Each false statement must be something that could plausibly have been the
-  headline that month, and that a well-informed reader could not rule out
-  without actually knowing the month's news.
-- They must not describe anything that really happened at any time, in any
-  month — a distractor that is real elsewhere in the timeline is unscoreable.
-- Same domain, same register, same level of detail as the true one.
-
-Rules for ALL ${nOptions} statements in an item:
+  The result of a scheduled event is good; the fact that one was scheduled is not.
 - 15-25 words. Declarative. Named actors and concrete specifics in every one.
-- NEVER mention a month name, a year, or a relative date ("last week"). The
-  reader is told the month separately; a date inside a statement gives it away.
-- No statement may hint at which one is true through length, hedging, or
-  vagueness. Written down, the ${nOptions} should be indistinguishable to someone
-  who does not know what happened.
+- NEVER mention a month name, a year, or a relative date ("last week"). The quiz
+  asks the reader WHICH MONTH this happened in — a date in the text gives it away.
+- Write them all to one standard. Every statement becomes a wrong answer in other
+  months' questions, so a statement that reads differently from the rest is a tell
+  wherever it appears.
 
 Respond ONLY with JSON:
-{"items":[{"fact":"...","distractors":["...", "..."],"domain":"...","source_url":"https://...","source_title":"..."}]}
-Each item needs at least ${nOptions + 1} distractors.`
+{"events":[{"statement":"...","domain":"...","source_url":"https://...","source_title":"..."}]}`
 }
 
-function verifyPrompt(month: string, item: DraftItem): string {
-  return `Check a quiz item about ${monthLabel(month)} using web search.
+function verifyPrompt(month: string, event: DraftEvent): string {
+  return `Check one statement using web search.
 
-Statement claimed TRUE for ${monthLabel(month)}:
-  ${item.fact}
+Statement, claimed to describe something that happened in ${monthLabel(month)}:
+  ${event.statement}
 
-Statements claimed FALSE (should describe nothing that ever happened):
-${item.distractors.map((d, i) => `  ${i + 1}. ${d}`).join("\n")}
-
-Answer two questions:
-1. fact_confirmed — did the true statement really happen, and in ${monthLabel(month)}?
-   Answer false if it happened in a different month, or you cannot confirm it.
-2. any_distractor_real — does ANY of the false statements describe a real event
-   (at any date), or a real event with only cosmetic details changed?
+Answer:
+1. confirmed — did this really happen, and in ${monthLabel(month)}? Answer false if
+   it happened in a different month, or if you cannot confirm it. The month matters:
+   this statement becomes a wrong answer in other months' questions, so a wrong date
+   corrupts the quiz in both directions.
 
 Respond ONLY with JSON:
-{"fact_confirmed":true,"any_distractor_real":false,"reason":"one sentence"}`
+{"confirmed":true,"reason":"one sentence"}`
 }
 
 // ── Local quality gates (free — run before spending on verification) ──
@@ -216,71 +184,18 @@ const DATE_LEAK_RE =
   /\b(19|20)\d{2}\b|\b(january|february|march|april|may|june|july|august|september|october|november|december)\b|\b(last|next|this)\s+(week|month|year)\b/i
 
 /**
- * Reject items whose true statement is identifiable without knowing the
- * answer. Two tells matter in practice: a date inside a statement, and a
- * true statement conspicuously longer or shorter than its distractors
- * (models write the real one with more detail). Both would inflate every
- * model's plateau accuracy and push the estimated cutoff later.
+ * Reject events that would give their own month away, or that can't be
+ * audited later. Length is no longer policed here: every option in a
+ * finished item is one of these statements, written to the same brief, so
+ * there is no "real one reads differently" tell left to gate against.
+ * auditBank still measures it on the assembled quiz.
  */
-function localReject(item: DraftItem, nOptions: number): string | null {
-  if (!item.fact?.trim()) return "empty fact"
-  if (!Array.isArray(item.distractors) || item.distractors.length < nOptions - 1) {
-    return `expected at least ${nOptions - 1} distractors, got ${item.distractors?.length ?? 0}`
-  }
-  const all = [item.fact, ...item.distractors].map((s) => s.trim())
-  if (all.some((s) => !s)) return "empty option"
-  if (new Set(all.map((s) => s.toLowerCase())).size !== all.length) return "duplicate options"
-  for (const s of all) {
-    const leak = s.match(DATE_LEAK_RE)
-    if (leak) return `date leak in option: "${leak[0]}"`
-  }
-  if (!/^https?:\/\//.test(item.source_url ?? "")) return "missing source url"
+function localReject(event: DraftEvent): string | null {
+  if (!event?.statement?.trim()) return "empty statement"
+  const leak = event.statement.match(DATE_LEAK_RE)
+  if (leak) return `date leak: "${leak[0]}"`
+  if (!/^https?:\/\//.test(event.source_url ?? "")) return "missing source url"
   return null
-}
-
-/**
- * Choose which distractors actually ship, so the true statement is never
- * the longest or shortest of the set.
- *
- * Length is the tell that shows up in practice: a real event gets stated
- * plainly, an invented one gets embellished. On a first pilot the true
- * answer was the longest option in 35% of items against a 13% chance
- * rate — enough for "pick the longest" to beat guessing, which would
- * inflate every model's plateau and push every estimated cutoff later.
- *
- * The builder is asked for MORE distractors than the quiz needs, so this
- * is a selection problem rather than a rejection problem: keep one
- * distractor longer than the fact and one shorter (bracketing it), then
- * fill the rest with whichever are closest to it in length. Nothing is
- * thrown away that we already paid for unless the bracket is impossible.
- */
-export function selectDistractors(
-  fact: string,
-  distractors: string[],
-  need: number
-): { chosen: string[] } | { reject: string } {
-  const factLen = fact.length
-  const longer = distractors
-    .filter((d) => d.length > factLen)
-    .sort((a, b) => a.length - b.length)
-  const shorter = distractors
-    .filter((d) => d.length < factLen)
-    .sort((a, b) => b.length - a.length)
-  if (longer.length === 0) return { reject: "no distractor longer than the fact" }
-  if (shorter.length === 0) return { reject: "no distractor shorter than the fact" }
-
-  const chosen = [longer[0], shorter[0]]
-  const rest = distractors
-    .filter((d) => !chosen.includes(d))
-    .sort((a, b) => Math.abs(a.length - factLen) - Math.abs(b.length - factLen))
-  for (const d of rest) {
-    if (chosen.length >= need) break
-    chosen.push(d)
-  }
-  if (chosen.length < need) {
-    return { reject: `only ${chosen.length} usable distractors, need ${need}` }
-  }
-  return { chosen: chosen.slice(0, need) }
 }
 
 // ── Arg parsing ──────────────────────────────────────────────────────
@@ -353,9 +268,9 @@ async function main() {
   }
 
   const allMonths = monthRange(from, to)
-  const have = new Set(existing?.items.map((it) => it.month) ?? [])
+  const have = new Set(existing?.events.map((e) => e.month) ?? [])
   const countFor = (m: string) =>
-    existing?.items.filter((it) => it.month === m).length ?? 0
+    existing?.events.filter((e) => e.month === m).length ?? 0
   /**
    * --top-up <n> revisits months that came back THIN rather than only
    * months that are missing. Selection is strict enough that a month can
@@ -384,7 +299,7 @@ async function main() {
   )
   if (existing) {
     console.log(
-      pc.dim(`  existing:  ${existing.items.length} items across ${have.size} months (kept)`)
+      pc.dim(`  existing:  ${existing.events.length} events across ${have.size} months (kept)`)
     )
   }
   console.log(pc.dim(`  builder:   ${builder}`))
@@ -417,7 +332,7 @@ async function main() {
     want: number,
     avoid: string[]
   ): Promise<{
-    items: DraftItem[]
+    events: DraftEvent[]
     drafted: number
     localDrops: number
     verifyDrops: number
@@ -426,10 +341,10 @@ async function main() {
     const res = await askJson({
       apiKey,
       model: builder,
-      messages: [{ role: "user", content: draftPrompt(month, want, nOptions, avoid) }],
+      messages: [{ role: "user", content: draftPrompt(month, want, avoid) }],
       responseFormat: {
         type: "json_schema",
-        json_schema: { name: "quiz_items", strict: true, schema: DRAFT_SCHEMA },
+        json_schema: { name: "events", strict: true, schema: DRAFT_SCHEMA },
       },
       temperature: 0.4,
       maxTokens,
@@ -437,31 +352,20 @@ async function main() {
       timeoutMs: 150_000,
     })
     if (!res.ok) {
-      return { items: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.error }
+      return { events: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.error }
     }
-    const raw = (res.value?.items ?? []) as DraftItem[]
+    const raw = (res.value?.events ?? []) as DraftEvent[]
 
-    // Free gates first — never pay a verifier to look at an item we can
-    // already tell is unusable.
-    const passed: DraftItem[] = []
-    for (const item of raw) {
-      const why = localReject(item, nOptions)
+    // Free gates first — never pay a verifier to look at a statement we
+    // can already tell is unusable.
+    const passed: DraftEvent[] = []
+    for (const event of raw) {
+      const why = localReject(event)
       if (why) {
         console.log(pc.dim(`      drop ${month}: ${why}`))
         continue
       }
-      // Trim the surplus down to the shipping set here, so the verifier
-      // only ever sees the statements that will actually appear.
-      const picked = selectDistractors(
-        item.fact.trim(),
-        item.distractors.map((d) => d.trim()),
-        nOptions - 1
-      )
-      if ("reject" in picked) {
-        console.log(pc.dim(`      drop ${month}: ${picked.reject}`))
-        continue
-      }
-      passed.push({ ...item, distractors: picked.chosen })
+      passed.push(event)
     }
 
     let accepted = passed
@@ -469,11 +373,11 @@ async function main() {
     if (verify && passed.length > 0) {
       const verdicts = await pMap(
         passed,
-        async (item) => {
+        async (event) => {
           const v = await askJson({
             apiKey,
             model: verifier,
-            messages: [{ role: "user", content: verifyPrompt(month, item) }],
+            messages: [{ role: "user", content: verifyPrompt(month, event) }],
             responseFormat: {
               type: "json_schema",
               json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
@@ -483,26 +387,24 @@ async function main() {
             webSearch: true,
             timeoutMs: 150_000,
           })
-          if (!v.ok) return { item, ok: false, reason: `verifier: ${v.error}` }
+          if (!v.ok) return { event, ok: false, reason: `verifier: ${v.error}` }
           return {
-            item,
-            ok:
-              v.value?.fact_confirmed === true &&
-              v.value?.any_distractor_real === false,
+            event,
+            ok: v.value?.confirmed === true,
             reason: String(v.value?.reason ?? ""),
           }
         },
-        { concurrency: Math.min(perMonth, 5) }
+        { concurrency: Math.min(want, 5) }
       )
       for (const v of verdicts) {
         if (!v.ok) console.log(pc.dim(`      drop ${month}: ${v.reason.slice(0, 90)}`))
       }
-      accepted = verdicts.filter((v) => v.ok).map((v) => v.item)
+      accepted = verdicts.filter((v) => v.ok).map((v) => v.event)
       verifyDrops = verdicts.length - accepted.length
     }
 
     return {
-      items: accepted,
+      events: accepted,
       drafted: raw.length,
       localDrops: raw.length - passed.length,
       verifyDrops,
@@ -517,7 +419,7 @@ async function main() {
     ...(verify ? { verifier_model: verifier } : {}),
     n_options: nOptions,
     months: [...have].sort((a, b) => monthOrdinal(a) - monthOrdinal(b)),
-    items: [...(existing?.items ?? [])],
+    events: [...(existing?.events ?? [])],
   }
 
   // Months run concurrently, so serialise the read-modify-write.
@@ -529,30 +431,24 @@ async function main() {
    * items and fail validation — inside the flush, i.e. after the calls
    * were paid for.
    */
-  function flush(month: string, drafts: DraftItem[]): Promise<void> {
+  function flush(month: string, drafts: DraftEvent[]): Promise<void> {
     flushing = flushing.then(() => {
-      const offset = bank.items.filter((it) => it.month === month).length
-      const items: QuizItem[] = drafts.map((d, i) => {
-        const id = `${month}-${String(offset + i).padStart(2, "0")}-${slug(d.fact)}`
-        const { options, answer } = shuffleOptions(
-          id,
-          d.fact.trim(),
-          d.distractors.map((x) => x.trim())
-        )
-        return {
-          id,
+      const offset = bank.events.filter((e) => e.month === month).length
+      const seen = new Set(bank.events.map((e) => e.statement.trim().toLowerCase()))
+      const fresh = drafts.filter((d) => !seen.has(d.statement.trim().toLowerCase()))
+      bank.events.push(
+        ...fresh.map((d, i) => ({
+          id: `${month}-${String(offset + i).padStart(2, "0")}-${slug(d.statement)}`,
           month,
           domain: d.domain,
-          options,
-          answer,
+          statement: d.statement.trim(),
           source: { url: d.source_url, title: d.source_title },
-        }
-      })
-      bank.items.push(...items)
-      bank.items.sort(
+        }))
+      )
+      bank.events.sort(
         (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
       )
-      bank.months = [...new Set(bank.items.map((it) => it.month))].sort(
+      bank.months = [...new Set(bank.events.map((e) => e.month))].sort(
         (a, b) => monthOrdinal(a) - monthOrdinal(b)
       )
       bank.built_at = new Date().toISOString()
@@ -571,21 +467,21 @@ async function main() {
   await pMap(
     todo,
     async (month) => {
-      const held = bank.items.filter((it) => it.month === month)
+      const held = bank.events.filter((e) => e.month === month)
       const want = topUpTo > 0 ? Math.max(1, topUpTo - held.length) : perMonth
       // Show the builder what this month already has so a top-up gets
       // new events rather than paraphrases of the ones we banked.
-      const avoid = held.map((it) => it.options[it.answer])
+      const avoid = held.map((e) => e.statement)
       const r = await buildMonth(month, want, avoid)
       // A month that yielded nothing leaves the file alone — no point
       // rewriting the bank to bump its timestamp.
-      if (r.items.length > 0) await flush(month, r.items)
+      if (r.events.length > 0) await flush(month, r.events)
       done++
       const elapsed = (Date.now() - startedAt) / 1000
       const eta = done === 0 ? 0 : (elapsed / done) * (todo.length - done)
       const status = r.error
         ? pc.red(`✗ ${r.error.slice(0, 60)}`)
-        : pc.green(`${r.items.length} kept`) +
+        : pc.green(`${r.events.length} kept`) +
           (r.localDrops + r.verifyDrops > 0
             ? pc.dim(` (${r.localDrops + r.verifyDrops} dropped)`)
             : "")
@@ -593,21 +489,24 @@ async function main() {
       console.log(
         `  [${done}/${todo.length}] ${month} — ${status}` +
           pc.dim(
-            ` · ${bank.items.length} items banked · ${fmtDuration(eta)} left${await billedSoFar()}`
+            ` · ${bank.events.length} events banked · ${fmtDuration(eta)} left${await billedSoFar()}`
           )
       )
     },
     { concurrency }
   )
 
-  const audit = auditBank(bank)
+  const assembled = assembleItems(bank.events, { nOptions })
+  const audit = auditBank(bank, assembled)
   const thin = bank.months.filter(
-    (m) => bank.items.filter((it) => it.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
+    (m) => bank.events.filter((e) => e.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
   )
   console.log()
   console.log(pc.green(`✓ Wrote ${outPath}`))
   console.log(
-    pc.dim(`  ${bank.items.length} items · ${bank.months.length} months · ${nOptions}-way · version ${version}`)
+    pc.dim(
+      `  ${bank.events.length} events · ${bank.months.length} months · ${nOptions}-way · version ${version}`
+    )
   )
   if (failed > 0) {
     console.log(

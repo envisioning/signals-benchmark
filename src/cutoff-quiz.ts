@@ -22,6 +22,18 @@
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
+/**
+ * How far away, in months, a distractor event must be drawn from.
+ *
+ * Calibrated against models with published cutoffs: at a 2-month gap even
+ * gpt-4.1 could not reliably place events it knew (plateau 50%), which
+ * flattens the step the estimator is looking for. At 9 months the plateau
+ * reaches 99% while the estimate stays put, so the gap buys dynamic range
+ * without moving the answer. The cost is temporal resolution: this cannot
+ * distinguish cutoffs a month or two apart, and does not claim to.
+ */
+export const DEFAULT_MONTH_GAP = 9
+
 /** Default on-disk location, relative to the repo root. */
 export const DEFAULT_BANK_PATH = "data/cutoff-quiz.json"
 
@@ -49,9 +61,15 @@ export type QuizBank = {
   builder_model: string
   verifier_model?: string
   n_options: number
-  /** Ascending "YYYY-MM" list. May be sparse if a month yielded no items. */
+  /** Ascending "YYYY-MM" list. May be sparse if a month yielded nothing. */
   months: string[]
-  items: QuizItem[]
+  /**
+   * Verified real events, one per quiz question. The bank stores EVENTS
+   * rather than finished multiple-choice items because each item's wrong
+   * options are other months' events — see assembleItems. Adding a month
+   * therefore enriches the distractor pool for every other month too.
+   */
+  events: QuizEvent[]
 }
 
 // ── Month helpers ────────────────────────────────────────────────────
@@ -147,6 +165,90 @@ export function shuffleOptions(
   return { options, answer: options.indexOf(correct) }
 }
 
+// ── Assembly ─────────────────────────────────────────────────────────
+
+/** One verified real event. The unit the bank is actually built from. */
+export type QuizEvent = {
+  id: string
+  month: string
+  domain: string
+  /** Present tense, no dates — see the date-leak gate in build-quiz.ts. */
+  statement: string
+  source?: { url: string; title?: string }
+}
+
+/**
+ * Assemble multiple-choice items where EVERY option is a real event and
+ * only the month differs.
+ *
+ * Fabricated distractors don't work, however they are written. Invent
+ * the entity names and a model rules them out by recognising that no
+ * such mission exists; use real entities and it rules them out because
+ * the claim is implausible. Either way it scores far above chance on
+ * months it cannot know: gpt-4.1-mini, cutoff 2024-06, scored 40% and
+ * then 72% on those two designs against 12.5% chance.
+ *
+ * Drawing the distractors from other months' verified events removes the
+ * shortcut: all eight options really happened, all are plausible, and the
+ * only thing that separates them is knowing WHEN. That is the quantity we
+ * are trying to measure.
+ *
+ * Distractors are taken at least `minMonthGap` months away so an event
+ * that straddles a month boundary can't make an item ambiguous, and from
+ * the same domain where possible so the answer isn't "the one about
+ * sport". Selection is seeded by the event id, so the same pool always
+ * assembles the same quiz.
+ */
+export function assembleItems(
+  events: QuizEvent[],
+  {
+    nOptions,
+    minMonthGap = 2,
+  }: { nOptions: number; minMonthGap?: number }
+): QuizItem[] {
+  const items: QuizItem[] = []
+  for (const event of events) {
+    const rand = prng(seedFrom(`${event.id}::assemble`))
+    const far = events.filter(
+      (e) =>
+        e.id !== event.id &&
+        Math.abs(monthOrdinal(e.month) - monthOrdinal(event.month)) >= minMonthGap &&
+        e.statement !== event.statement
+    )
+    // Same domain first; top up from the rest of the pool when a domain
+    // is too thin to fill the item on its own.
+    const sameDomain = far.filter((e) => e.domain === event.domain)
+    const others = far.filter((e) => e.domain !== event.domain)
+    const pick = (pool: QuizEvent[], n: number): QuizEvent[] => {
+      const copy = [...pool]
+      const out: QuizEvent[] = []
+      while (out.length < n && copy.length > 0) {
+        out.push(copy.splice(Math.floor(rand() * copy.length), 1)[0])
+      }
+      return out
+    }
+    const need = nOptions - 1
+    const chosen = pick(sameDomain, need)
+    if (chosen.length < need) chosen.push(...pick(others, need - chosen.length))
+    if (chosen.length < need) continue // pool too small to build this item
+
+    const { options, answer } = shuffleOptions(
+      event.id,
+      event.statement,
+      chosen.map((e) => e.statement)
+    )
+    items.push({
+      id: event.id,
+      month: event.month,
+      domain: event.domain,
+      options,
+      answer,
+      ...(event.source ? { source: event.source } : {}),
+    })
+  }
+  return items
+}
+
 // ── Load + validate ──────────────────────────────────────────────────
 
 export class QuizBankError extends Error {}
@@ -173,9 +275,9 @@ export function loadQuizBank(path = DEFAULT_BANK_PATH): QuizBank {
     throw new QuizBankError(`Quiz bank at ${abs} is not valid JSON: ${e?.message ?? e}`)
   }
   validateBank(bank)
-  if (bank.items.length === 0) {
+  if (bank.events.length === 0) {
     throw new QuizBankError(
-      `Quiz bank at ${abs} has no items.\n` +
+      `Quiz bank at ${abs} has no events.\n` +
         `Every draft was rejected, or the build failed before writing any month.\n` +
         `Re-run: pnpm cutoff:build --from <YYYY-MM>`
     )
@@ -196,32 +298,47 @@ export function validateBank(bank: QuizBank): void {
   }
   // Emptiness is NOT a structural error: `cutoff:build` validates the
   // bank after every month it writes, and the first month can legitimately
-  // yield nothing (every draft rejected). Refusing an empty bank here
-  // aborted the whole build on that path. Usability is checked in
-  // loadQuizBank instead, where an empty bank actually is a problem.
-  if (!Array.isArray(bank.items)) fail("items must be an array")
+  // yield nothing. Usability is checked in loadQuizBank instead.
+  if (!Array.isArray(bank.events)) fail("events must be an array")
 
   const seen = new Set<string>()
-  for (const [i, it] of bank.items.entries()) {
-    const where = `items[${i}]${it?.id ? ` (${it.id})` : ""}`
-    if (!it?.id) fail(`${where}: missing id`)
-    if (seen.has(it.id)) fail(`${where}: duplicate id`)
-    seen.add(it.id)
-    if (!isMonth(it.month)) fail(`${where}: month must be YYYY-MM, got ${it.month}`)
-    if (!Array.isArray(it.options) || it.options.length !== bank.n_options) {
-      fail(`${where}: expected ${bank.n_options} options, got ${it.options?.length}`)
+  const seenStatements = new Set<string>()
+  for (const [i, e] of bank.events.entries()) {
+    const where = `events[${i}]${e?.id ? ` (${e.id})` : ""}`
+    if (!e?.id) fail(`${where}: missing id`)
+    if (seen.has(e.id)) fail(`${where}: duplicate id`)
+    seen.add(e.id)
+    if (!isMonth(e.month)) fail(`${where}: month must be YYYY-MM, got ${e.month}`)
+    if (typeof e.statement !== "string" || e.statement.trim().length === 0) {
+      fail(`${where}: empty statement`)
     }
-    if (new Set(it.options).size !== it.options.length) fail(`${where}: duplicate options`)
-    if (!Number.isInteger(it.answer) || it.answer < 0 || it.answer >= bank.n_options) {
-      fail(`${where}: answer index out of range`)
-    }
+    // A statement repeated under two months would appear twice in one
+    // item — one of them as a wrong answer that is actually right.
+    const key = e.statement.trim().toLowerCase()
+    if (seenStatements.has(key)) fail(`${where}: duplicate statement`)
+    seenStatements.add(key)
   }
 }
 
-/** Items for the requested months, in bank order. */
-export function itemsForMonths(bank: QuizBank, months: string[]): QuizItem[] {
+/**
+ * Assemble the quiz for a window.
+ *
+ * Distractors are drawn from the WHOLE bank, not just the window: a
+ * narrow window would otherwise leave a thin pool, and an item whose
+ * wrong options all come from two nearby months is both easier and less
+ * comparable to the same item in a wider run.
+ */
+export function itemsForMonths(
+  bank: QuizBank,
+  months: string[],
+  minMonthGap = DEFAULT_MONTH_GAP
+): QuizItem[] {
   const want = new Set(months)
-  return bank.items.filter((it) => want.has(it.month))
+  const all = assembleItems(bank.events, {
+    nOptions: bank.n_options,
+    minMonthGap,
+  })
+  return all.filter((it) => want.has(it.month))
 }
 
 // ── Audit ────────────────────────────────────────────────────────────
@@ -252,14 +369,14 @@ export type BankAudit = {
  * becomes a winning strategy. Chance is 1/n_options; anything much above
  * that is a bank problem, not a model result.
  */
-export function auditBank(bank: QuizBank): BankAudit {
-  const n = bank.items.length
+export function auditBank(bank: QuizBank, items: QuizItem[]): BankAudit {
+  const n = items.length
   const chance = 1 / bank.n_options
   let shortest = 0
   let longest = 0
   const positions = new Array<number>(bank.n_options).fill(0)
 
-  for (const it of bank.items) {
+  for (const it of items) {
     const lens = it.options.map((o) => o.length)
     const answerLen = lens[it.answer]
     if (answerLen === Math.min(...lens)) shortest++
@@ -273,7 +390,7 @@ export function auditBank(bank: QuizBank): BankAudit {
     n === 0 ? 0 : Math.max(...positions.map((c) => Math.abs(c / n - chance)))
 
   const perMonthMap = new Map<string, number>()
-  for (const it of bank.items) {
+  for (const it of items) {
     perMonthMap.set(it.month, (perMonthMap.get(it.month) ?? 0) + 1)
   }
   const per_month = [...perMonthMap.entries()]
@@ -286,6 +403,11 @@ export function auditBank(bank: QuizBank): BankAudit {
   if (n >= 20 && shortest_rate > chance * 2) {
     warnings.push(
       `true answer is the shortest option in ${pct(shortest_rate)} of items (chance ${pct(chance)}) — "pick the shortest" beats guessing`
+    )
+  }
+  if (n >= 20 && shortest_rate + longest_rate > chance * 4) {
+    warnings.push(
+      `true answer is an extreme by length in ${pct(shortest_rate + longest_rate)} of items — check the events are written to one standard`
     )
   }
   if (n >= 20 && longest_rate > chance * 2) {

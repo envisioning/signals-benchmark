@@ -1,0 +1,1514 @@
+{
+  "version": "2026-08-v2",
+  "built_at": "2026-08-31T14:47:10.303Z",
+  "builder_model": "openai/gpt-5.4:online",
+  "verifier_model": "google/gemini-2.5-flash:online",
+  "n_options": 8,
+  "months": [
+    "2023-01",
+    "2023-02",
+    "2023-03",
+    "2023-04",
+    "2023-05",
+    "2023-06",
+    "2023-07",
+    "2023-08",
+    "2023-09",
+    "2023-10",
+    "2023-11",
+    "2023-12",
+    "2024-01",
+    "2024-02",
+    "2024-03",
+    "2024-04",
+    "2024-05",
+    "2024-06",
+    "2024-07",
+    "2024-08",
+    "2024-09",
+    "2024-10",
+    "2024-11",
+    "2024-12",
+    "2025-01",
+    "2025-02",
+    "2025-03",
+    "2025-04",
+    "2025-05",
+    "2025-06",
+    "2025-07",
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07"
+  ],
+  "events": [
+    {
+      "id": "2023-01-00-supporters-of-jair-bolsonaro",
+      "month": "2023-01",
+      "domain": "world politics or policy",
+      "statement": "Supporters of Jair Bolsonaro stormed Brazil's Congress, Supreme Court, and presidential palace in Brasília after Luiz Inácio Lula da Silva took office.",
+      "source": {
+        "url": "https://www.reuters.com/world/americas/bolsonaro-supporters-invade-congress-presidential-palace-brasilia-2023-01-08/",
+        "title": "Bolsonaro supporters invade Congress, presidential palace, Supreme Court in Brasilia"
+      }
+    },
+    {
+      "id": "2023-01-01-the-fda-granted-accelerated",
+      "month": "2023-01",
+      "domain": "science, space, or medicine",
+      "statement": "The FDA granted accelerated approval to Leqembi, an Alzheimer's treatment from Eisai and Biogen aimed at patients with early disease.",
+      "source": {
+        "url": "https://www.fda.gov/drugs/drug-trials-snapshots/drug-trials-snapshots-leqembi",
+        "title": "Drug Trials Snapshots: LEQEMBI"
+      }
+    },
+    {
+      "id": "2023-01-02-microsoft-extended-its-partnership",
+      "month": "2023-01",
+      "domain": "business, markets, or technology",
+      "statement": "Microsoft extended its partnership with OpenAI and said Azure would remain the exclusive cloud provider for OpenAI workloads and products.",
+      "source": {
+        "url": "https://openai.com/index/openai-and-microsoft-extend-partnership/",
+        "title": "OpenAI and Microsoft extend partnership"
+      }
+    },
+    {
+      "id": "2023-01-03-novak-djokovic-beat-stefanos",
+      "month": "2023-01",
+      "domain": "sport",
+      "statement": "Novak Djokovic beat Stefanos Tsitsipas in straight sets to win the Australian Open men's singles title and regain number one.",
+      "source": {
+        "url": "https://www.atptour.com/en/news/tsitsipas-djokovic-australian-open-2023-sunday-final",
+        "title": "Novak Djokovic Returns To No. 1 With 22nd Major At Australian Open"
+      }
+    },
+    {
+      "id": "2023-01-04-prince-harry-s-memoir",
+      "month": "2023-01",
+      "domain": "culture, film, music, or literature",
+      "statement": "Prince Harry's memoir 'Spare' became the United Kingdom's fastest-selling nonfiction book after release, according to its publisher.",
+      "source": {
+        "url": "https://www.reuters.com/world/uk/prince-harrys-memoir-hits-shelves-after-days-controversy-2023-01-10/",
+        "title": "Prince Harry's memoir hits shelves after days of controversy"
+      }
+    },
+    {
+      "id": "2023-01-05-a-yeti-airlines-atr",
+      "month": "2023-01",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A Yeti Airlines ATR 72 crashed near Pokhara while approaching the airport, killing everyone aboard in Nepal's worst air crash in decades.",
+      "source": {
+        "url": "https://www.reuters.com/world/asia-pacific/plane-carrying-72-people-crashes-nepal-some-bodies-recovered-official-state-tv-2023-01-15/",
+        "title": "At least 68 killed in Nepal's worst air crash in three decades"
+      }
+    },
+    {
+      "id": "2023-02-00-the-united-kingdom-and",
+      "month": "2023-02",
+      "domain": "world politics or policy",
+      "statement": "The United Kingdom and European Union agreed the Windsor Framework, with Rishi Sunak and Ursula von der Leyen revising Northern Ireland trade rules.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023",
+        "title": "2023 - Wikipedia"
+      }
+    },
+    {
+      "id": "2023-02-01-nasa-confirmed-the-dart",
+      "month": "2023-02",
+      "domain": "science, space, or medicine",
+      "statement": "NASA confirmed the DART spacecraft changed Dimorphos's orbit around Didymos, marking the first demonstrated alteration of a celestial body's motion by humans.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasa-confirms-dart-mission-impact-changed-asteroids-motion-in-space/",
+        "title": "NASA Confirms DART Mission Impact Changed Asteroid’s Motion in Space"
+      }
+    },
+    {
+      "id": "2023-02-02-harry-styles-won-album",
+      "month": "2023-02",
+      "domain": "culture, film, music, or literature",
+      "statement": "Harry Styles won Album of the Year at the Grammy Awards for Harry's House, defeating Beyoncé, Adele, and Kendrick Lamar.",
+      "source": {
+        "url": "https://www.grammy.com/awards/",
+        "title": "Grammy Awards Shows & Ceremonies from 1959 to 2026"
+      }
+    },
+    {
+      "id": "2023-02-03-massive-earthquakes-struck-southern",
+      "month": "2023-02",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Massive earthquakes struck southern Türkiye and northern Syria, causing widespread destruction, cross-border humanitarian crisis, and one of the deadliest disasters in decades.",
+      "source": {
+        "url": "https://www.who.int/europe/emergencies/situations/turkiye-and-syria-earthquakes",
+        "title": "Türkiye and Syria earthquakes"
+      }
+    },
+    {
+      "id": "2023-03-00-kaja-kallas-s-reform",
+      "month": "2023-03",
+      "domain": "world politics or policy",
+      "statement": "Kaja Kallas's Reform Party won Estonia's parliamentary election, and two liberal parties secured an absolute Riigikogu majority while far-right EKRE finished second.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023_Estonian_parliamentary_election",
+        "title": "2023 Estonian parliamentary election"
+      }
+    },
+    {
+      "id": "2023-03-01-japan-defeated-the-united",
+      "month": "2023-03",
+      "domain": "sport",
+      "statement": "Japan defeated the United States to win the World Baseball Classic, with Shohei Ohtani striking out Mike Trout for the final out.",
+      "source": {
+        "url": "https://www.mlb.com/news/japan-wins-world-baseball-classic-2023",
+        "title": "Japan wins World Baseball Classic 2023"
+      }
+    },
+    {
+      "id": "2023-03-02-michelle-yeoh-won-the",
+      "month": "2023-03",
+      "domain": "culture, film, music, or literature",
+      "statement": "Michelle Yeoh won the Academy Award for best actress for Everything Everywhere All at Once, becoming the first Asian woman to win.",
+      "source": {
+        "url": "https://www.reuters.com/world/us/michelle-yeoh-wins-best-actress-oscar-everything-everywhere-all-once-2023-03-13/",
+        "title": "Michelle Yeoh wins best actress Oscar for Everything Everywhere All at Once"
+      }
+    },
+    {
+      "id": "2023-03-03-a-violent-tornado-devastated",
+      "month": "2023-03",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A violent tornado devastated Rolling Fork and Silver City in Mississippi, killing dozens and leveling homes, businesses, and public buildings.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023_Rolling_Fork_tornado",
+        "title": "2023 Rolling Fork tornado"
+      }
+    },
+    {
+      "id": "2023-04-00-sudan-s-army-and",
+      "month": "2023-04",
+      "domain": "world politics or policy",
+      "statement": "Sudan’s army and the Rapid Support Forces began open warfare in Khartoum, after rival commanders Abdel Fattah al-Burhan and Hemedti failed to resolve tensions.",
+      "source": {
+        "url": "https://www.reuters.com/world/africa/how-sudans-military-factions-set-path-war-mediation-stalled-2023-04-28/",
+        "title": "How Sudan's military factions set path to war as mediation stalled"
+      }
+    },
+    {
+      "id": "2023-04-01-fox-corporation-agreed-to",
+      "month": "2023-04",
+      "domain": "business, markets, or technology",
+      "statement": "Fox Corporation agreed to pay Dominion Voting Systems $787.5 million, ending a defamation lawsuit over false election-fraud claims aired by Fox News.",
+      "source": {
+        "url": "https://www.reuters.com/world/us/fox-dominion-reach-last-minute-settlement-defamation-lawsuit-2023-04-18/",
+        "title": "Fox settles Dominion lawsuit for $787.5 million over US election lies"
+      }
+    },
+    {
+      "id": "2023-04-02-manchester-city-eliminated-bayern",
+      "month": "2023-04",
+      "domain": "sport",
+      "statement": "Manchester City eliminated Bayern Munich from the Champions League quarter-finals, advancing with a 4-1 aggregate score after a draw in Munich.",
+      "source": {
+        "url": "https://www.uefa.com/uefachampionsleague/news/0280-17d1170f7f71-1d68f60751c4-1000--report-city-ease-into-last-four/",
+        "title": "Bayern 1-1 Man City (agg: 1-4): Haaland scores again as City ease through to Champions League semi-finals"
+      }
+    },
+    {
+      "id": "2023-04-03-the-cannes-film-festival",
+      "month": "2023-04",
+      "domain": "culture, film, music, or literature",
+      "statement": "The Cannes Film Festival announced an Official Selection featuring new competition entries from Wes Anderson, Ken Loach, Todd Haynes, and Wim Wenders.",
+      "source": {
+        "url": "https://www.festival-cannes.com/en/press/press-releases/the-films-of-the-official-selection-2023/",
+        "title": "The films of the Official Selection 2023"
+      }
+    },
+    {
+      "id": "2023-05-00-nvidia-forecast-quarterly-revenue",
+      "month": "2023-05",
+      "domain": "business, markets, or technology",
+      "statement": "Nvidia forecast quarterly revenue far above Wall Street estimates, triggering a massive rally as investors embraced booming demand for artificial-intelligence chips.",
+      "source": {
+        "url": "https://www.reuters.com/world/china/nvidia-close-becoming-first-trillion-dollar-chip-firm-after-stellar-forecast-2023-05-25/",
+        "title": "Chip giant Nvidia nears trillion-dollar status on AI bet"
+      }
+    },
+    {
+      "id": "2023-05-01-cyclone-mocha-made-landfall",
+      "month": "2023-05",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Cyclone Mocha made landfall near the Myanmar-Bangladesh border with destructive winds, becoming one of the strongest storms recorded there.",
+      "source": {
+        "url": "https://public.wmo.int/media/news/very-severe-cyclonic-storm-mocha-threatens-myanmar-bangladesh",
+        "title": "Very severe cyclonic storm Mocha threatens Myanmar, Bangladesh"
+      }
+    },
+    {
+      "id": "2023-05-02-president-tayyip-erdogan-won",
+      "month": "2023-05",
+      "domain": "world politics or policy",
+      "statement": "President Tayyip Erdogan won Turkey’s presidential runoff against Kemal Kilicdaroglu, extending his rule and reinforcing an increasingly centralized model of executive power.",
+      "source": {
+        "url": "https://www.reuters.com/world/middle-east/turkeys-erdogan-triumphs-election-test-extending-his-20-year-rule-2023-05-28/",
+        "title": "Turkey's Erdogan triumphs in election test, extending 20-year rule"
+      }
+    },
+    {
+      "id": "2023-06-00-the-food-and-drug",
+      "month": "2023-06",
+      "domain": "science, space, or medicine",
+      "statement": "The Food and Drug Administration approved Lantidra, the first donor-derived pancreatic islet cell therapy for adults with type 1 diabetes.",
+      "source": {
+        "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-cellular-therapy-treat-patients-type-1-diabetes",
+        "title": "FDA Approves First Cellular Therapy to Treat Patients with Type 1 Diabetes"
+      }
+    },
+    {
+      "id": "2023-06-01-the-pga-tour-agreed",
+      "month": "2023-06",
+      "domain": "business, markets, or technology",
+      "statement": "The PGA Tour agreed with Saudi Arabia's Public Investment Fund and the DP World Tour to pursue a new commercial entity.",
+      "source": {
+        "url": "https://www.pgatour.com/article/news/future/frequently-asked-questions",
+        "title": "Frequently Asked Questions - PGA TOUR"
+      }
+    },
+    {
+      "id": "2023-06-02-the-denver-nuggets-defeated",
+      "month": "2023-06",
+      "domain": "sport",
+      "statement": "The Denver Nuggets defeated the Miami Heat to win the franchise's first NBA championship, with Nikola Jokić earning Finals MVP.",
+      "source": {
+        "url": "https://www.nba.com/game/mia-vs-undefined-0042200405",
+        "title": "Miami Heat vs Denver Nuggets Jun 12, 2023 Game Summary | NBA.com"
+      }
+    },
+    {
+      "id": "2023-06-03-the-titan-submersible-imploded",
+      "month": "2023-06",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "The Titan submersible imploded during a dive toward the Titanic wreck, killing all five people aboard in the North Atlantic.",
+      "source": {
+        "url": "https://www.news.uscg.mil/News-by-Region/Headquarters/Titan-Submersible/An/",
+        "title": "Titan Submersible - Coast Guard Marine Board of Investigation"
+      }
+    },
+    {
+      "id": "2023-07-00-soldiers-in-niger-announced",
+      "month": "2023-07",
+      "domain": "world politics or policy",
+      "statement": "Soldiers in Niger announced they had removed President Mohamed Bazoum, and General Abdourahamane Tchiani soon emerged as head of a junta.",
+      "source": {
+        "url": "https://www.reuters.com/world/africa/niger-president-heldby-guards-in-palace-but-aides-sayuprising-in-vain-2023-07-26/",
+        "title": "Niger soldiers say President Bazoum's government has been removed"
+      }
+    },
+    {
+      "id": "2023-07-01-a-u-s-appeals",
+      "month": "2023-07",
+      "domain": "business, markets, or technology",
+      "statement": "A U.S. appeals court denied the Federal Trade Commission's bid to pause Microsoft's takeover of Activision Blizzard during appeal.",
+      "source": {
+        "url": "https://www.reuters.com/markets/deals/us-ftc-asks-court-temporarily-halt-microsofts-acquisition-activision-2023-07-14/",
+        "title": "US asks appeals court to pause Microsoft deal after lower court refuses"
+      }
+    },
+    {
+      "id": "2023-07-02-guatemala-s-top-electoral",
+      "month": "2023-07",
+      "domain": "world politics or policy",
+      "statement": "Guatemala’s top electoral tribunal certified first-round results, sending Sandra Torres and Bernardo Arévalo to a presidential runoff despite legal attacks on Semilla.",
+      "source": {
+        "url": "https://apnews.com/article/guatemala-election-results-arevalo-torres-semilla-suspension-9d1df2f38003089f49816de014541d2d",
+        "title": "Top tribunal certifies Guatemala's election result minutes after another court suspends party"
+      }
+    },
+    {
+      "id": "2023-08-00-arm-filed-for-a",
+      "month": "2023-08",
+      "domain": "business, markets, or technology",
+      "statement": "Arm filed for a U.S. stock market listing, launching a closely watched initial public offering after SoftBank’s acquisition of Vision Fund shares.",
+      "source": {
+        "url": "https://www.reuters.com/world/uk/softbanks-arm-files-us-ipo-wall-street-debut-2023-08-21/",
+        "title": "SoftBank's Arm files for U.S. IPO in Wall Street return"
+      }
+    },
+    {
+      "id": "2023-08-01-spain-defeated-england-in",
+      "month": "2023-08",
+      "domain": "sport",
+      "statement": "Spain defeated England in the Women’s World Cup final, winning the title through Olga Carmona’s first-half goal in Sydney.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023_FIFA_Women%27s_World_Cup_final",
+        "title": "2023 FIFA Women's World Cup final"
+      }
+    },
+    {
+      "id": "2023-08-02-wildfires-on-maui-devastated",
+      "month": "2023-08",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Wildfires on Maui devastated Lahaina and became the deadliest U.S. wildfire in more than a century as fatalities climbed sharply.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/death-toll-from-maui-fires-hits-at-least-80-damages-at-billions-of-dollars-3152973",
+        "title": "Maui wildfires deadliest in century as death toll hits 93 By Reuters"
+      }
+    },
+    {
+      "id": "2023-09-00-at-the-new-delhi",
+      "month": "2023-09",
+      "domain": "world politics or policy",
+      "statement": "At the New Delhi summit, Narendra Modi announced the African Union had become a permanent G20 member, expanding representation for fifty-five African states.",
+      "source": {
+        "url": "https://www.yahoo.com/news/g20-admit-african-union-permanent-051422966.html",
+        "title": "G20 admits African Union as permanent member at New Delhi summit"
+      }
+    },
+    {
+      "id": "2023-09-01-nasa-s-osiris-rex",
+      "month": "2023-09",
+      "domain": "science, space, or medicine",
+      "statement": "NASA's OSIRIS-REx capsule landed in Utah, delivering the agency's first asteroid sample to Earth after collecting material from the near-Earth asteroid Bennu.",
+      "source": {
+        "url": "https://science.nasa.gov/missions/osiris-rex/osirisrex-delivers-nasas-first-asteroid-sample-to-earth/",
+        "title": "OSIRIS-REx Delivers NASA’s First Asteroid Sample to Earth"
+      }
+    },
+    {
+      "id": "2023-09-02-arm-holdings-debuted-on",
+      "month": "2023-09",
+      "domain": "business, markets, or technology",
+      "statement": "Arm Holdings debuted on Nasdaq after SoftBank's blockbuster offering, and the chip designer's shares jumped sharply above their initial public offering price.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/softbanks-arm-set-to-debut-on-nasdaq-after-blockbuster-ipo-3174422",
+        "title": "SoftBank's Arm soars nearly 25% in market debut to $65 billion valuation By Reuters"
+      }
+    },
+    {
+      "id": "2023-09-03-storm-daniel-caused-dams",
+      "month": "2023-09",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Storm Daniel caused dams above Derna to burst, unleashing catastrophic floods that destroyed neighborhoods and killed thousands along Libya's eastern coast.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/quarter-of-libyan-city-wiped-out-by-burst-dam-1000-bodies-recovered-so-far-3172343",
+        "title": "Libya floods wipe out quarter of city, thousands dead By Reuters"
+      }
+    },
+    {
+      "id": "2023-10-00-katalin-karik-and-drew",
+      "month": "2023-10",
+      "domain": "science, space, or medicine",
+      "statement": "Katalin Karikó and Drew Weissman received the Nobel Prize in Physiology or Medicine for discoveries enabling effective mRNA vaccines against COVID-19.",
+      "source": {
+        "url": "https://www.nobelprize.org/prizes/medicine/2023/prize-announcement//",
+        "title": "The Nobel Prize in Physiology or Medicine 2023 - Prize announcement"
+      }
+    },
+    {
+      "id": "2023-10-01-microsoft-completed-its-acquisition",
+      "month": "2023-10",
+      "domain": "business, markets, or technology",
+      "statement": "Microsoft completed its acquisition of Activision Blizzard, bringing franchises including Call of Duty, Warcraft, Overwatch, and Candy Crush into Xbox.",
+      "source": {
+        "url": "https://blogs.microsoft.com/blog/2023/10/13/welcoming-the-legendary-teams-at-activision-blizzard-king-to-team-xbox/",
+        "title": "Welcoming the legendary teams at Activision Blizzard King to Team Xbox"
+      }
+    },
+    {
+      "id": "2023-10-02-taylor-swift-s-concert",
+      "month": "2023-10",
+      "domain": "culture, film, music, or literature",
+      "statement": "Taylor Swift’s concert film opened atop the domestic box office with $93,224,755, giving cinemas a rare blockbuster from a tour movie.",
+      "source": {
+        "url": "https://www.boxofficemojo.com/month/october/2023/?grossesOption=totalGrosses&releaseScale=wide&sort=openingWeekendGross",
+        "title": "Domestic Box Office For October 2023"
+      }
+    },
+    {
+      "id": "2023-11-00-authorities-evacuated-grindav-k",
+      "month": "2023-11",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Authorities evacuated Grindavík in southwestern Iceland after intense earthquakes and magma movement raised fears of an imminent volcanic eruption.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023%E2%80%932025_Sundhn%C3%BAkur_eruptions",
+        "title": "2023–2025 Sundhnúkur eruptions"
+      }
+    },
+    {
+      "id": "2023-11-01-geert-wilders-s-party",
+      "month": "2023-11",
+      "domain": "world politics or policy",
+      "statement": "Geert Wilders's Party for Freedom won the most seats in Dutch parliamentary elections, abruptly upending coalition arithmetic across the Netherlands.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2023_Dutch_general_election",
+        "title": "2023 Dutch general election"
+      }
+    },
+    {
+      "id": "2023-12-00-donald-tusk-s-pro",
+      "month": "2023-12",
+      "domain": "world politics or policy",
+      "statement": "Donald Tusk’s pro-European coalition took office in Warsaw after Andrzej Duda swore in a new Polish cabinet, ending eight years of nationalist rule.",
+      "source": {
+        "url": "https://www.gov.pl/web/primeminister/president-andrzej-duda-appoints-prime-minister-donald-tusk-and-a-new-council-of-ministers",
+        "title": "President Andrzej Duda appoints Prime Minister Donald Tusk and a new Council of Ministers"
+      }
+    },
+    {
+      "id": "2023-12-01-european-union-negotiators-reached",
+      "month": "2023-12",
+      "domain": "business, markets, or technology",
+      "statement": "European Union negotiators reached a provisional agreement on the AI Act, creating landmark rules for biometric surveillance and powerful general-purpose systems.",
+      "source": {
+        "url": "https://www.consilium.europa.eu/en/press/press-releases/2023/12/09/artificial-intelligence-act-council-and-parliament-strike-a-deal-on-the-first-worldwide-rules-for-ai/pdf",
+        "title": "Artificial intelligence act: Council and Parliament strike a deal on the first rules for AI in the world"
+      }
+    },
+    {
+      "id": "2023-12-02-a-volcanic-eruption-began",
+      "month": "2023-12",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A volcanic eruption began on Iceland’s Reykjanes Peninsula near Grindavík, opening a fissure north of the evacuated fishing town after weeks of seismic unrest.",
+      "source": {
+        "url": "https://island.is/en/news/eruption-on-the-reykjanes-peninsula",
+        "title": "Eruption on the Reykjanes Peninsula"
+      }
+    },
+    {
+      "id": "2024-01-00-japan-became-the-fifth",
+      "month": "2024-01",
+      "domain": "science, space, or medicine",
+      "statement": "Japan became the fifth country to place a spacecraft on the Moon when JAXA's SLIM lander achieved a successful lunar soft landing.",
+      "source": {
+        "url": "https://www.shorenewsnetwork.com/japans-slim-spacecraft-lands/",
+        "title": "Japan's SLIM spacecraft lands on moon, a first for the country"
+      }
+    },
+    {
+      "id": "2024-01-01-the-u-s-securities",
+      "month": "2024-01",
+      "domain": "business, markets, or technology",
+      "statement": "The U.S. Securities and Exchange Commission approved the first U.S.-listed spot bitcoin exchange-traded funds, authorizing products from eleven issuers.",
+      "source": {
+        "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-statement-spot-bitcoin-011023",
+        "title": "Statement on the Approval of Spot Bitcoin Exchange-Traded Products"
+      }
+    },
+    {
+      "id": "2024-01-02-jannik-sinner-rallied-from",
+      "month": "2024-01",
+      "domain": "sport",
+      "statement": "Jannik Sinner rallied from two sets down to defeat Daniil Medvedev and win the Australian Open men's singles title.",
+      "source": {
+        "url": "https://www.atptour.com/en/news/medvedev-sinner-australian-open-2024-final",
+        "title": "Jannik Sinner defeats Daniil Medvedev to win Australian Open title | ATP Tour | Tennis"
+      }
+    },
+    {
+      "id": "2024-02-00-hungary-s-parliament-approved",
+      "month": "2024-02",
+      "domain": "world politics or policy",
+      "statement": "Hungary's parliament approved Sweden's NATO accession, clearing the alliance's final ratification hurdle after months of delays by Viktor Orban's governing party.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/sweden-clears-final-hurdle-to-join-nato-as-hungary-approves-accession-3314520",
+        "title": "Sweden clears final hurdle to join NATO as Hungary approves accession"
+      }
+    },
+    {
+      "id": "2024-02-01-openai-unveiled-sora-a",
+      "month": "2024-02",
+      "domain": "business, markets, or technology",
+      "statement": "OpenAI unveiled Sora, a new artificial intelligence model that generates realistic minute-long videos from text prompts for testers and creative professionals.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/openai-introduces-ai-model-that-turns-text-into-video-3305559",
+        "title": "OpenAI introduces AI model that turns text into video"
+      }
+    },
+    {
+      "id": "2024-03-00-sam-bankman-fried-received",
+      "month": "2024-03",
+      "domain": "business, markets, or technology",
+      "statement": "Sam Bankman-Fried received a twenty-five-year prison sentence after Judge Lewis Kaplan punished the FTX founder for stealing billions from cryptocurrency exchange customers.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/sam-bankmanfried-to-be-sentenced-for-multibillion-dollar-ftx-fraud-3356370",
+        "title": "Bankman-Fried sentenced to 25 years for multi-billion dollar FTX fraud By Reuters"
+      }
+    },
+    {
+      "id": "2024-03-01-caitlin-clark-became-the",
+      "month": "2024-03",
+      "domain": "sport",
+      "statement": "Caitlin Clark became the NCAA Division I all-time scoring leader, surpassing Pete Maravich while starring for Iowa in a home victory over Ohio State.",
+      "source": {
+        "url": "https://sports.yahoo.com/caitlin-clark-breaks-pete-maravichs-ncaa-all-time-scoring-record-185800264.html",
+        "title": "Caitlin Clark breaks Pete Maravich's NCAA all-time scoring record - Yahoo Sports"
+      }
+    },
+    {
+      "id": "2024-03-02-oppenheimer-won-best-picture",
+      "month": "2024-03",
+      "domain": "culture, film, music, or literature",
+      "statement": "Oppenheimer won best picture at the Academy Awards, leading a dominant night that delivered Christopher Nolan’s historical drama seven Oscar victories.",
+      "source": {
+        "url": "https://www.oscars.org/oscars/ceremonies/2024",
+        "title": "The 96th Academy Awards | 2024"
+      }
+    },
+    {
+      "id": "2024-03-03-the-francis-scott-key",
+      "month": "2024-03",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "The Francis Scott Key Bridge collapsed in Baltimore after the container ship Dali struck it, causing vehicles and workers to plunge into the harbor.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/francis-scott-key-bridge-disaster-reactions-3353192",
+        "title": "Francis Scott Key bridge disaster reactions By Reuters"
+      }
+    },
+    {
+      "id": "2024-04-00-texas-health-officials-reported",
+      "month": "2024-04",
+      "domain": "science, space, or medicine",
+      "statement": "Texas health officials reported a dairy worker infected with H5N1 bird flu, the first known human case linked to exposure to infected cattle.",
+      "source": {
+        "url": "https://www.cdc.gov/media/releases/2024/p0401-avian-flu.html",
+        "title": "Highly Pathogenic Avian Influenza A (H5N1) Virus Infection Reported in a Person in the U.S. | CDC Online Newsroom | CDC"
+      }
+    },
+    {
+      "id": "2024-04-01-tesla-announced-plans-to",
+      "month": "2024-04",
+      "domain": "business, markets, or technology",
+      "statement": "Tesla announced plans to cut more than one-tenth of its global workforce as slowing electric-vehicle sales intensified pressure on the company’s margins.",
+      "source": {
+        "url": "https://www.investing.com/news/economy/tesla-to-lay-off-more-than-10-of-its-staff-electrek-reports-3377742",
+        "title": "Tesla laying off more than 10% of staff globally as sales fall By Reuters"
+      }
+    },
+    {
+      "id": "2024-04-02-bayer-leverkusen-secured-the",
+      "month": "2024-04",
+      "domain": "sport",
+      "statement": "Bayer Leverkusen secured the first Bundesliga title in club history by thrashing Werder Bremen, ending Bayern Munich’s long run as champions.",
+      "source": {
+        "url": "https://www.bundesliga.com/en/bundesliga/news/bayer-leverkusen-are-2023-24-bundesliga-champions-26930",
+        "title": "Bayer Leverkusen are 2023/24 Bundesliga champions! | Bundesliga"
+      }
+    },
+    {
+      "id": "2024-04-03-reuters-photographer-mohammed-salem",
+      "month": "2024-04",
+      "domain": "culture, film, music, or literature",
+      "statement": "Reuters photographer Mohammed Salem won World Press Photo of the Year for an image showing a Palestinian woman holding her dead niece.",
+      "source": {
+        "url": "https://www.worldpressphoto.org/media-center/media-release/2024/global-winners-announced",
+        "title": "2024 Contest global winners announced | World Press Photo"
+      }
+    },
+    {
+      "id": "2024-04-04-a-powerful-earthquake-struck",
+      "month": "2024-04",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A powerful earthquake struck near Hualien City in eastern Taiwan, killing people, damaging buildings, and becoming the island’s strongest quake in decades.",
+      "source": {
+        "url": "https://www.usgs.gov/news/featured-story/strong-quake-and-aftershocks-rattle-eastern-taiwan",
+        "title": "Strong Quake and Aftershocks Rattle Eastern Taiwan | U.S. Geological Survey"
+      }
+    },
+    {
+      "id": "2024-05-00-openai-introduced-gpt-4o",
+      "month": "2024-05",
+      "domain": "business, markets, or technology",
+      "statement": "OpenAI introduced GPT-4o, a multimodal model capable of real-time voice conversation and interaction across text and vision in ChatGPT.",
+      "source": {
+        "url": "https://openai.com/index/spring-update/",
+        "title": "Spring Update | OpenAI"
+      }
+    },
+    {
+      "id": "2024-05-01-madonna-drew-an-estimated",
+      "month": "2024-05",
+      "domain": "culture, film, music, or literature",
+      "statement": "Madonna drew an estimated 1.6 million people to a free concert on Rio de Janeiro’s Copacabana Beach, closing her Celebration Tour.",
+      "source": {
+        "url": "https://www.aol.com/news/thousands-madonna-fans-gather-copacabana-221143293.html",
+        "title": "Madonna attracts 1.6 million to free concert at Brazil's Copacabana beach - AOL"
+      }
+    },
+    {
+      "id": "2024-05-02-a-massive-landslide-buried",
+      "month": "2024-05",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A massive landslide buried homes and residents in Enga Province, Papua New Guinea, devastating the remote village of Yambali.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/more-than-300-buried-in-papua-new-guinea-landslide-local-media-says-3457265",
+        "title": "More than 300 buried in Papua New Guinea landslide, local media says By Reuters"
+      }
+    },
+    {
+      "id": "2024-06-00-nvidia-became-the-world",
+      "month": "2024-06",
+      "domain": "business, markets, or technology",
+      "statement": "Nvidia became the world’s most valuable company, overtaking Microsoft as investor enthusiasm for artificial intelligence drove its market capitalization higher.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/ai-fever-drives-nvidias-rise-to-worlds-most-valuable-company-3488728",
+        "title": "AI fever drives Nvidia’s rise to world’s most valuable company By Reuters"
+      }
+    },
+    {
+      "id": "2024-06-01-india-beat-south-africa",
+      "month": "2024-06",
+      "domain": "sport",
+      "statement": "India beat South Africa by seven runs in Bridgetown to win the ICC Men’s T20 World Cup title.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2024_Men%27s_T20_World_Cup_final",
+        "title": "2024 Men's T20 World Cup final"
+      }
+    },
+    {
+      "id": "2024-06-02-pixar-s-inside-out",
+      "month": "2024-06",
+      "domain": "culture, film, music, or literature",
+      "statement": "Pixar’s Inside Out 2 opened with about $155 million in North America, delivering the biggest domestic debut for an animated film since Incredibles 2.",
+      "source": {
+        "url": "https://thewaltdisneycompany.com/news/inside-out-2-box-office/",
+        "title": "‘Inside Out 2’ Smashes Global and Domestic Box Office Records | The Walt Disney Company"
+      }
+    },
+    {
+      "id": "2024-06-03-extreme-heat-during-the",
+      "month": "2024-06",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Extreme heat during the hajj killed hundreds of pilgrims in Saudi Arabia as temperatures soared around the holy sites in Mecca.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/millions-sweltering-under-extreme-heat-worldwide-as-summer-arrives-3489931",
+        "title": "Extreme heat kills hundreds, millions more sweltering worldwide as summer begins By Reuters"
+      }
+    },
+    {
+      "id": "2024-07-00-spain-defeated-england-in",
+      "month": "2024-07",
+      "domain": "sport",
+      "statement": "Spain defeated England in Berlin, with Mikel Oyarzabal scoring late to secure a record fourth men's European Championship title.",
+      "source": {
+        "url": "https://www.uefa.com/uefaeuro/history/news/028f-1b5e5c2b7b67-d5faab9be20b-1000--spain-2-1-england-late-oyarzabal-winner-earns-la-roja-reco/",
+        "title": "Spain 2-1 England: Late Oyarzabal winner earns La Roja record fourth EURO crown"
+      }
+    },
+    {
+      "id": "2024-07-01-disney-s-deadpool-wolverine",
+      "month": "2024-07",
+      "domain": "culture, film, music, or literature",
+      "statement": "Disney's Deadpool & Wolverine delivered the biggest domestic opening of the year, giving Marvel a badly needed box-office jolt after recent stumbles.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/marvels-deadpool--wolverine-sets-record-on-opening-day-3539705",
+        "title": "Marvel's 'Deadpool & Wolverine' sets record on opening day"
+      }
+    },
+    {
+      "id": "2024-07-02-hurricane-beryl-struck-texas",
+      "month": "2024-07",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Hurricane Beryl struck Texas after regaining hurricane strength, killing residents, flooding roads, shutting ports, and leaving millions without electricity around Houston.",
+      "source": {
+        "url": "https://www.investing.com/news/commodities-news/hurricane-beryl-expected-to-weaken-quickly-as-it-churns-across-texas-3509787",
+        "title": "Storm Beryl kills three, knocks out power for 2.7 million in Texas"
+      }
+    },
+    {
+      "id": "2024-08-00-thailand-s-constitutional-court",
+      "month": "2024-08",
+      "domain": "world politics or policy",
+      "statement": "Thailand's Constitutional Court dismissed Prime Minister Srettha Thavisin over a cabinet appointment, and parliament later elevated Paetongtarn Shinawatra to lead the government.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2024",
+        "title": "2024"
+      }
+    },
+    {
+      "id": "2024-08-01-a-federal-judge-ruled",
+      "month": "2024-08",
+      "domain": "business, markets, or technology",
+      "statement": "A federal judge ruled Google illegally maintained a search monopoly, handing U.S. antitrust enforcers a landmark courtroom victory against Big Tech.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/us-judge-rules-google-broke-antitrust-law-in-search-case-3555486",
+        "title": "Google has an illegal monopoly on search, US judge finds By Reuters"
+      }
+    },
+    {
+      "id": "2024-08-02-pakistan-s-arshad-nadeem",
+      "month": "2024-08",
+      "domain": "sport",
+      "statement": "Pakistan's Arshad Nadeem won the men's javelin title with a 92.97-meter Olympic record, defeating India's defending champion Neeraj Chopra.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/Athletics_at_the_2024_Summer_Olympics_%E2%80%93_Men%27s_javelin_throw",
+        "title": "Athletics at the 2024 Summer Olympics – Men's javelin throw"
+      }
+    },
+    {
+      "id": "2024-08-03-oasis-announced-the-band",
+      "month": "2024-08",
+      "domain": "culture, film, music, or literature",
+      "statement": "Oasis announced the band had reformed, with Noel Gallagher and Liam Gallagher unveiling plans for stadium shows across Britain and Ireland.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/Oasis_(band)",
+        "title": "Oasis (band)"
+      }
+    },
+    {
+      "id": "2024-08-04-a-voepass-atr-72",
+      "month": "2024-08",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A Voepass ATR 72 crashed near Vinhedo in São Paulo state, killing all 61 passengers and crew aboard.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/plane-with-capacity-to-transport-68-people-crashes-in-brazil-website-g1-reports-3564971",
+        "title": "Brazilian plane spins before crashing, killing all 61 on board By Reuters"
+      }
+    },
+    {
+      "id": "2024-09-00-mexico-s-senate-gave",
+      "month": "2024-09",
+      "domain": "world politics or policy",
+      "statement": "Mexico's Senate gave final approval to Andrés Manuel López Obrador's judicial overhaul, creating nationwide popular elections for judges despite fierce opposition protests.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/mexican-senate-gives-final-approval-for-judicial-reform-3611030",
+        "title": "Mexican Senate gives final approval for judicial reform By Reuters"
+      }
+    },
+    {
+      "id": "2024-09-01-jared-isaacman-and-sarah",
+      "month": "2024-09",
+      "domain": "science, space, or medicine",
+      "statement": "Jared Isaacman and Sarah Gillis completed the first private spacewalk, exiting SpaceX's Crew Dragon during the Polaris Dawn mission in Earth orbit.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/spacexpolaris-crew-poised-to-attempt-first-private-spacewalk-3612463",
+        "title": "Billionaire and engineer conduct first private spacewalk in SpaceX mission By Reuters"
+      }
+    },
+    {
+      "id": "2024-09-02-apple-unveiled-the-iphone",
+      "month": "2024-09",
+      "domain": "business, markets, or technology",
+      "statement": "Apple unveiled the iPhone 16 lineup, emphasizing Apple Intelligence features and upgraded Siri capabilities during its product event in Cupertino.",
+      "source": {
+        "url": "https://www.investing.com/news/economy-news/apples-iphone-16-will-put-ai-features-in-focus-3606601",
+        "title": "Apple debuts iPhone 16 with test AI software rolling out this year and next By Reuters"
+      }
+    },
+    {
+      "id": "2024-09-03-jannik-sinner-beat-taylor",
+      "month": "2024-09",
+      "domain": "sport",
+      "statement": "Jannik Sinner beat Taylor Fritz in straight sets to become the first Italian man to win the U.S. Open singles title.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/tennisruthless-sinner-beats-fritz-to-win-us-open-3606315",
+        "title": "Tennis-'Bravo, Bravo' Sinner, first Italian man to win U.S. Open By Reuters"
+      }
+    },
+    {
+      "id": "2024-10-00-japan-s-ruling-liberal",
+      "month": "2024-10",
+      "domain": "world politics or policy",
+      "statement": "Japan's ruling Liberal Democratic Party and Komeito coalition lost its lower-house majority after voters punished Prime Minister Shigeru Ishiba in a snap election.",
+      "source": {
+        "url": "https://www.investing.com/news/economy-news/japan-votes-in-election-expected-to-punish-pm-ishibas-coalition-3684619",
+        "title": "Japan's ruling coalition loses majority, election outcome in balance By Reuters"
+      }
+    },
+    {
+      "id": "2024-10-01-david-baker-demis-hassabis",
+      "month": "2024-10",
+      "domain": "science, space, or medicine",
+      "statement": "David Baker, Demis Hassabis, and John Jumper won the Nobel Prize in Chemistry for computational protein design and AI-based protein structure prediction.",
+      "source": {
+        "url": "https://www.nobelprize.org/prizes/chemistry/2024/press-release/",
+        "title": "Press release: The Nobel Prize in Chemistry 2024"
+      }
+    },
+    {
+      "id": "2024-10-02-openai-closed-a-6",
+      "month": "2024-10",
+      "domain": "business, markets, or technology",
+      "statement": "OpenAI closed a $6.6 billion funding round, with backing from Microsoft and Nvidia, valuing the ChatGPT maker at $157 billion.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/openai-closes-66-billion-funding-haul-at-valuation-of-157-billion-3645659",
+        "title": "OpenAI closes $6.6 billion funding haul with investment from Microsoft and Nvidia By Reuters"
+      }
+    },
+    {
+      "id": "2024-10-03-catastrophic-flash-floods-in",
+      "month": "2024-10",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Catastrophic flash floods in eastern Spain killed scores of people after torrential rain inundated Valencia, destroying roads, bridges, and vehicles.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/heavy-rains-cause-flash-floods-in-spains-south-east-3688947",
+        "title": "Spanish floods kill 95 as year of rain falls in a day in Valencia By Reuters"
+      }
+    },
+    {
+      "id": "2024-11-00-donald-trump-defeated-kamala",
+      "month": "2024-11",
+      "domain": "world politics or policy",
+      "statement": "Donald Trump defeated Kamala Harris, completing a nonconsecutive White House comeback after Associated Press projected his victory with Wisconsin pushing him past 270 electoral votes.",
+      "source": {
+        "url": "https://www.ap.org/the-definitive-source/behind-the-news/calling-the-2024-presidential-race-state-by-state/",
+        "title": "Calling the 2024 presidential race state by state | The Associated Press"
+      }
+    },
+    {
+      "id": "2024-11-01-the-food-and-drug",
+      "month": "2024-11",
+      "domain": "science, space, or medicine",
+      "statement": "The Food and Drug Administration approved revumenib, sold as Revuforj, for relapsed or refractory acute leukemia with a KMT2A translocation in adults and children.",
+      "source": {
+        "url": "https://www.fda.gov/drugs/resources-information-approved-drugs/fda-approves-revumenib-relapsed-or-refractory-acute-leukemia-kmt2a-translocation",
+        "title": "FDA approves revumenib for relapsed or refractory acute leukemia with a KMT2A translocation | FDA"
+      }
+    },
+    {
+      "id": "2024-11-02-bitcoin-broke-above-90",
+      "month": "2024-11",
+      "domain": "business, markets, or technology",
+      "statement": "Bitcoin broke above $90,000 for the first time, extending a postelection rally driven by expectations Donald Trump would favor cryptocurrencies.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/bitcoin-rises-above-90000-on-trump-euphoria-3720352",
+        "title": "Bitcoin rises above $90,000 on Trump euphoria By Reuters"
+      }
+    },
+    {
+      "id": "2024-11-03-the-cure-reached-number",
+      "month": "2024-11",
+      "domain": "culture, film, music, or literature",
+      "statement": "The Cure reached number one on the UK albums chart with Songs Of A Lost World, ending a thirty-two-year gap since their previous chart-topper.",
+      "source": {
+        "url": "https://www.officialcharts.com/albums/cure-songs-of-a-lost-world/",
+        "title": "SONGS OF A LOST WORLD – CURE | Official Charts"
+      }
+    },
+    {
+      "id": "2024-11-04-countries-at-the-cop29",
+      "month": "2024-11",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Countries at the COP29 summit in Baku adopted a $300 billion annual climate-finance target to help poorer nations cope with climate impacts.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/wealthy-countries-back-raising-cop29-climate-deal-to-300-billion-sources-say-3738324",
+        "title": "Developing nations blast $300 billion COP29 climate deal as insufficient By Reuters"
+      }
+    },
+    {
+      "id": "2024-12-00-french-lawmakers-passed-a",
+      "month": "2024-12",
+      "domain": "world politics or policy",
+      "statement": "French lawmakers passed a no-confidence motion that toppled Prime Minister Michel Barnier's government, deepening the country's budget crisis and political deadlock.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/french-lawmakers-set-to-vote-on-ousting-prime-minister-barnier-3753011",
+        "title": "French government felled in no-confidence vote, deepening political crisis By Reuters"
+      }
+    },
+    {
+      "id": "2024-12-01-taylor-swift-concluded-her",
+      "month": "2024-12",
+      "domain": "culture, film, music, or literature",
+      "statement": "Taylor Swift concluded her record-breaking Eras Tour with the last of three Vancouver shows, ending the global concert phenomenon.",
+      "source": {
+        "url": "https://www.reutersconnect.com/item/taylor-swifts-record-breaking-the-eras-tour-wraps-up-with-three-final-shows-in-vancouver/dGFnOnJldXRlcnMuY29tLDIwMjQ6bmV3c21sX1JDMlpKQkFPVzI1Uw?lastViewed=dGFnOnJldXRlcnMuY29tLDIwMjQ6bmV3c21sX1JDMlpKQkFVNkxYTg&position=2",
+        "title": "Taylor Swift's record-breaking The Eras Tour wraps up with three final shows in Vancouver"
+      }
+    },
+    {
+      "id": "2025-01-00-blue-origin-s-new",
+      "month": "2025-01",
+      "domain": "science, space, or medicine",
+      "statement": "Blue Origin's New Glenn rocket reached orbit on its first mission from Cape Canaveral, marking the company's first successful orbital launch attempt.",
+      "source": {
+        "url": "https://www.blueorigin.com/news/new-glenn-ng-1-mission",
+        "title": "Blue Origin’s New Glenn Reaches Orbit"
+      }
+    },
+    {
+      "id": "2025-01-01-lebanon-s-parliament-elected",
+      "month": "2025-01",
+      "domain": "world politics or policy",
+      "statement": "Lebanon's parliament elected army chief Joseph Aoun as president, ending a prolonged vacancy after rival blocs and foreign backers accepted a compromise candidate.",
+      "source": {
+        "url": "https://www.reuters.com/world/middle-east/lebanese-lawmakers-begin-second-attempt-elect-president-2025-01-09/",
+        "title": "Lebanese lawmakers elect army chief Joseph Aoun as president"
+      }
+    },
+    {
+      "id": "2025-02-00-djibouti-s-mahamoud-ali",
+      "month": "2025-02",
+      "domain": "world politics or policy",
+      "statement": "Djibouti's Mahamoud Ali Youssouf won the African Union Commission chairmanship after multiple voting rounds, succeeding Moussa Faki as the bloc's top executive official.",
+      "source": {
+        "url": "https://au.int/sw/node/44450",
+        "title": "H.E. Mahmoud Ali Youssouf, H.E. Ambassador Selma Malika Haddadi, and 4 Commissioners elected to leadership positions in the African Union Commission elections"
+      }
+    },
+    {
+      "id": "2025-02-01-south-korea-suspended-new",
+      "month": "2025-02",
+      "domain": "business, markets, or technology",
+      "statement": "South Korea suspended new downloads of DeepSeek after regulators said the Chinese artificial intelligence app had failed to satisfy some personal-data protection requirements.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/south-koreas-data-protection-authority-suspends-local-service-of-deepseek-3871971",
+        "title": "New downloads of DeepSeek suspended in South Korea, data protection agency says By Reuters"
+      }
+    },
+    {
+      "id": "2025-02-02-the-philadelphia-eagles-defeated",
+      "month": "2025-02",
+      "domain": "sport",
+      "statement": "The Philadelphia Eagles defeated the Kansas City Chiefs in Super Bowl LIX, with quarterback Jalen Hurts leading Philadelphia to a decisive championship victory.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/nfleagles-deny-chiefs-historic-threepeat-with-thumping-super-bowl-win-3857979",
+        "title": "NFL-Eagles deny Chiefs historic three-peat with thumping Super Bowl win By Reuters"
+      }
+    },
+    {
+      "id": "2025-02-03-cyclone-garance-struck-la",
+      "month": "2025-02",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Cyclone Garance struck La Reunion with destructive winds, tearing roofs from buildings and disrupting electricity and drinking-water supplies across the island.",
+      "source": {
+        "url": "https://reuters.screenocean.com/record/1966180",
+        "title": "Red alert in effect as Cyclone Garance hits France’s Reunion Island"
+      }
+    },
+    {
+      "id": "2025-03-00-dna-testing-company-23andme",
+      "month": "2025-03",
+      "domain": "business, markets, or technology",
+      "statement": "DNA testing company 23andMe filed for Chapter 11 bankruptcy protection in the United States after weak kit demand and breach fallout battered the business.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/dna-testing-firm-23andme-files-for-chapter-11-bankruptcy-to-sell-itself-3943486",
+        "title": "DNA testing firm 23andMe files for bankruptcy as demand dries up By Reuters"
+      }
+    },
+    {
+      "id": "2025-03-01-newcastle-united-beat-liverpool",
+      "month": "2025-03",
+      "domain": "sport",
+      "statement": "Newcastle United beat Liverpool 2-1 at Wembley Stadium to win the League Cup and end a seventy-year domestic trophy drought.",
+      "source": {
+        "url": "https://theprint.in/sport/soccer-newcastle-end-trophy-drought-with-league-cup-final-win-over-liverpool/2550466/",
+        "title": "Soccer-Newcastle end trophy drought with League Cup final win over Liverpool – ReutersFeed"
+      }
+    },
+    {
+      "id": "2025-03-02-wildfires-in-south-korea",
+      "month": "2025-03",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Wildfires in South Korea doubled in size and killed at least twenty-eight people, becoming the country’s worst natural fire disaster on record.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/south-korea-battles-worst-ever-wildfires-as-death-toll-hits-26-3950785",
+        "title": "South Korea battles worst ever wildfires as death toll hits 28 By Reuters"
+      }
+    },
+    {
+      "id": "2025-04-00-brice-oligui-nguema-won",
+      "month": "2025-04",
+      "domain": "world politics or policy",
+      "statement": "Brice Oligui Nguema won Gabon's presidential election by a landslide, securing a seven-year mandate after ousting Ali Bongo and running against Alain Claude Bilie By Nze.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/junta-leader-nguema-vows-to-rebuild-gabon-after-landslide-vote-win-3983672",
+        "title": "Junta leader Nguema vows to rebuild Gabon after landslide vote win By Reuters"
+      }
+    },
+    {
+      "id": "2025-04-01-scientists-using-the-james",
+      "month": "2025-04",
+      "domain": "science, space, or medicine",
+      "statement": "Scientists using the James Webb Space Telescope reported the strongest evidence yet of possible life on K2-18 b, detecting dimethyl sulfide and dimethyl disulfide.",
+      "source": {
+        "url": "https://m.investing.com/news/world-news/scientists-find-strongest-evidence-yet-of-life-on-an-alien-planet-3989633?ampMode=1",
+        "title": "Scientists find strongest evidence yet of life on an alien planet By Reuters"
+      }
+    },
+    {
+      "id": "2025-04-02-rory-mcilroy-won-the",
+      "month": "2025-04",
+      "domain": "sport",
+      "statement": "Rory McIlroy won the Masters by beating Justin Rose in a sudden-death playoff, completing golf's career Grand Slam at Augusta National.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/golfrorys-time-mcilroy-wins-masters-to-complete-career-grand-slam-3982558",
+        "title": "Golf-Rory’s time! McIlroy wins Masters to complete career Grand Slam By Reuters"
+      }
+    },
+    {
+      "id": "2025-04-03-pope-francis-funeral-at",
+      "month": "2025-04",
+      "domain": "culture, film, music, or literature",
+      "statement": "Pope Francis' funeral at the Vatican drew presidents, royalty, cardinals, bishops, priests, and vast crowds gathered to bid farewell in Rome.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/royalty-and-presidents-to-join-multitude-of-mourners-at-pope-francis-funeral-4005560",
+        "title": "Rome and the world bid farewell to Pope Francis with massive funeral and humble burial By Reuters"
+      }
+    },
+    {
+      "id": "2025-04-04-a-huge-blast-at",
+      "month": "2025-04",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A huge blast at Iran's Shahid Rajaee port in Bandar Abbas killed dozens and injured more than one thousand people as firefighters battled the blaze.",
+      "source": {
+        "url": "https://www.investing.com/news/commodities-news/death-toll-in-irans-bandar-abbas-port-blast-rises-to-65-state-media-say-4007884",
+        "title": "Death toll in Iran’s Bandar Abbas port blast rises to 70 By Reuters"
+      }
+    },
+    {
+      "id": "2025-05-00-austria-s-jj-won",
+      "month": "2025-05",
+      "domain": "culture, film, music, or literature",
+      "statement": "Austria’s JJ won the Eurovision Song Contest in Basel with “Wasted Love,” giving Austria its first victory since Conchita Wurst’s triumph.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/austria-wins-eurovision-final-in-switzerland-4051590",
+        "title": "Austria wins Eurovision final in Switzerland By Reuters"
+      }
+    },
+    {
+      "id": "2025-05-01-flash-flooding-on-australia",
+      "month": "2025-05",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Flash flooding on Australia’s southeast coast killed three people, cut off towns, and pushed the Manning River above a century-old record.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/three-dead-in-australia-after-torrential-rain-ravages-rural-towns-4058535",
+        "title": "Three dead in Australia after torrential rain ravages rural towns By Reuters"
+      }
+    },
+    {
+      "id": "2025-06-00-the-nsf-doe-vera",
+      "month": "2025-06",
+      "domain": "science, space, or medicine",
+      "statement": "The NSF–DOE Vera C. Rubin Observatory released its first imagery in Washington, unveiling panoramic cosmic views and thousands of newly discovered asteroids.",
+      "source": {
+        "url": "https://rubinobservatory.org/news/first-imagery-rubin",
+        "title": "Ever-changing Universe Revealed in First Imagery From NSF–DOE Vera C. Rubin Observatory"
+      }
+    },
+    {
+      "id": "2025-06-01-portugal-beat-spain-on",
+      "month": "2025-06",
+      "domain": "business, markets, or technology",
+      "statement": "Portugal beat Spain on penalties after a 2-2 draw, securing the UEFA Nations League title as Cristiano Ronaldo captained the winners.",
+      "source": {
+        "url": "https://reuters.screenocean.com/record/1994895",
+        "title": "Portugal win Nations League title with shootout triumph over Spain | Reuters Archive Licensing"
+      }
+    },
+    {
+      "id": "2025-06-02-south-korea-elected-opposition",
+      "month": "2025-06",
+      "domain": "world politics or policy",
+      "statement": "South Korea elected opposition leader Lee Jae-myung president in a snap vote, completing a dramatic transfer of power after Yoon Suk Yeol’s impeachment crisis.",
+      "source": {
+        "url": "https://www.reuters.com/world/asia-pacific/liberal-lee-jae-myung-wins-south-koreas-presidential-election-2025-06-03/",
+        "title": "Liberal Lee Jae-myung wins South Korea's presidential election"
+      }
+    },
+    {
+      "id": "2025-07-00-flash-floods-along-the",
+      "month": "2025-07",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Flash floods along the Guadalupe River killed scores of people in Texas Hill Country, devastating Kerr County and a girls' summer camp.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/officials-confirm-deaths-after-flash-floods-in-central-texas-4123537",
+        "title": "At least 24 dead in Texas flash flooding; two dozen young campers missing By Reuters"
+      }
+    },
+    {
+      "id": "2025-07-01-superman-opened-atop-the",
+      "month": "2025-07",
+      "domain": "business, markets, or technology",
+      "statement": "Superman opened atop the North American box office with a huge debut, giving James Gunn's rebooted DC franchise a strong theatrical launch.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/Superman_(2025_film)",
+        "title": "Superman (2025 film)"
+      }
+    },
+    {
+      "id": "2025-07-02-thailand-s-constitutional-court",
+      "month": "2025-07",
+      "domain": "world politics or policy",
+      "statement": "Thailand’s Constitutional Court suspended Prime Minister Paetongtarn Shinawatra from duty while considering an ethics case tied to her leaked call with Hun Sen.",
+      "source": {
+        "url": "https://thailand.prd.go.th/en/content/category/detail/id/48/iid/402542",
+        "title": "Constitutional Court Suspends Prime Minister Paetongtarn Shinawatra from Duty"
+      }
+    },
+    {
+      "id": "2025-08-00-thailand-s-constitutional-court",
+      "month": "2025-08",
+      "domain": "world politics or policy",
+      "statement": "Thailand's Constitutional Court removed Prime Minister Paetongtarn Shinawatra from office after ruling leaked calls with Hun Sen constituted serious ethical misconduct.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2025_Thai_political_crisis",
+        "title": "2025 Thai political crisis"
+      }
+    },
+    {
+      "id": "2025-08-01-the-s-p-500",
+      "month": "2025-08",
+      "domain": "business, markets, or technology",
+      "statement": "The S&P 500 closed at a record high as investors awaited Nvidia earnings, extending a rally beyond megacap technology into financials and industrials.",
+      "source": {
+        "url": "https://www.reutersconnect.com/item/sp-500-hits-record-high-as-investors-await-nvidia-results/dGFnOnJldXRlcnMuY29tLDIwMjU6bmV3c21sX1ZBMDIzMTI3MDgyMDI1UlAx",
+        "title": "Licensable video: S&P 500 hits record high as investors await Nvidia results"
+      }
+    },
+    {
+      "id": "2025-08-02-armenian-prime-minister-nikol",
+      "month": "2025-08",
+      "domain": "world politics or policy",
+      "statement": "Armenian Prime Minister Nikol Pashinyan and Azerbaijani President Ilham Aliyev initialed a United States-brokered peace agreement at the White House in Washington.",
+      "source": {
+        "url": "https://www.reuters.com/world/azerbaijan-armenia-sign-peace-agreement-white-house-says-2025-08-08/",
+        "title": "Trump announces peace agreement between Azerbaijan and Armenia"
+      }
+    },
+    {
+      "id": "2025-09-00-thailand-s-parliament-elected",
+      "month": "2025-09",
+      "domain": "world politics or policy",
+      "statement": "Thailand's parliament elected Anutin Charnvirakul prime minister after he forged backing from the opposition People's Party and defeated Pheu Thai's candidate in Bangkok.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/thai-parliament-to-vote-on-new-pm-as-thaksin-jets-off-amid-chaos-4225875",
+        "title": "Thailand’s Anutin Charnvirakul elected PM after rout of ruling party rival By Reuters"
+      }
+    },
+    {
+      "id": "2025-09-01-microsoft-and-openai-signed",
+      "month": "2025-09",
+      "domain": "business, markets, or technology",
+      "statement": "Microsoft and OpenAI signed a non-binding deal allowing OpenAI to pursue a for-profit restructuring while redefining terms of their closely watched partnership.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/microsoft-openai-sign-mou-for-next-phase-of-partnership-4236222",
+        "title": "Microsoft, OpenAI reach non-binding deal to allow OpenAI to restructure By Reuters"
+      }
+    },
+    {
+      "id": "2025-09-02-jim-jarmusch-won-the",
+      "month": "2025-09",
+      "domain": "culture, film, music, or literature",
+      "statement": "Jim Jarmusch won the Golden Lion in Venice for 'Father Mother Sister Brother,' an unexpected festival triumph for his three-part family drama.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/us-independent-director-jim-jarmusch-triumphs-at-venice-festival-4227905",
+        "title": "US independent director Jim Jarmusch proves surprise Venice winner By Reuters"
+      }
+    },
+    {
+      "id": "2025-10-00-shohei-ohtani-reached-base",
+      "month": "2025-10",
+      "domain": "sport",
+      "statement": "Shohei Ohtani reached base nine times and homered twice as the Dodgers beat the Blue Jays in an eighteen-inning World Series game.",
+      "source": {
+        "url": "https://www.mlb.com/dodgers/news/shohei-ohtani-homers-in-world-series-game-3-2025",
+        "title": "Shohei Ohtani reaches base 9 times, homers twice in World Series Game 3 2025"
+      }
+    },
+    {
+      "id": "2025-10-01-japan-s-parliament-elected",
+      "month": "2025-10",
+      "domain": "world politics or policy",
+      "statement": "Japan’s parliament elected Sanae Takaichi prime minister, making her the country’s first woman to hold the office after the ruling coalition realigned.",
+      "source": {
+        "url": "https://www.reuters.com/world/asia-pacific/inspired-by-thatcher-sanae-takaichi-becomes-japans-first-female-premier-2025-10-21/",
+        "title": "Inspired by Thatcher, Sanae Takaichi becomes Japan’s first female premier"
+      }
+    },
+    {
+      "id": "2025-11-00-blue-origin-s-new",
+      "month": "2025-11",
+      "domain": "science, space, or medicine",
+      "statement": "Blue Origin’s New Glenn rocket launched two NASA Mars satellites from Cape Canaveral and achieved the company’s first successful reusable booster landing.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/blue-origin-launches-new-glenn-rocket-on-companys-first-nasascale-science-mission-4356836",
+        "title": "Blue Origin’s New Glenn rocket deploys Mars satellites, sticks booster landing By Reuters"
+      }
+    },
+    {
+      "id": "2025-11-01-johannesburg-hosted-the-first",
+      "month": "2025-11",
+      "domain": "world politics or policy",
+      "statement": "Johannesburg hosted the first G20 leaders’ summit held in Africa, with South Africa convening the forum at the Johannesburg Expo Centre.",
+      "source": {
+        "url": "https://g20.org/wp-content/uploads/2025/11/2025-G20-Summit-Declaration.pdf",
+        "title": "G20 South Africa Summit: Leaders’ Declaration"
+      }
+    },
+    {
+      "id": "2025-11-02-elena-rybakina-defeated-aryna",
+      "month": "2025-11",
+      "domain": "sport",
+      "statement": "Elena Rybakina defeated Aryna Sabalenka in Riyadh to win the season-ending WTA Finals singles title in straight sets.",
+      "source": {
+        "url": "https://www.wtatennis.com/news/4398548/rybakina-takes-down-sabalenka-to-close-2025-with-wta-finals-crown",
+        "title": "The perfect ending: Rybakina tops Sabalenka to win WTA Finals crown"
+      }
+    },
+    {
+      "id": "2025-11-03-tom-cruise-received-an",
+      "month": "2025-11",
+      "domain": "culture, film, music, or literature",
+      "statement": "Tom Cruise received an Honorary Oscar at the Academy’s Governors Awards ceremony in Los Angeles alongside Debbie Allen and Wynn Thomas.",
+      "source": {
+        "url": "https://www.oscars.org/governors/ceremonies/2025",
+        "title": "2025 Governors Awards | Oscars.org"
+      }
+    },
+    {
+      "id": "2025-11-04-cyclone-senyar-caused-catastrophic",
+      "month": "2025-11",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "Cyclone Senyar caused catastrophic flooding and mass fatalities across Thailand, Malaysia, and Indonesia, becoming one of the region’s deadliest weather disasters.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2025",
+        "title": "2025 - Wikipedia"
+      }
+    },
+    {
+      "id": "2025-12-00-scientists-using-nasa-s",
+      "month": "2025-12",
+      "domain": "science, space, or medicine",
+      "statement": "Scientists using NASA's James Webb Space Telescope reported an exoplanet with a helium- and molecular-carbon atmosphere unlike any previously observed around a pulsar.",
+      "source": {
+        "url": "https://science.nasa.gov/missions/webb/nasas-webb-observes-exoplanet-whose-composition-defies-explanation/",
+        "title": "NASA's Webb Observes Exoplanet Whose Composition Defies Explanation"
+      }
+    },
+    {
+      "id": "2025-12-01-france-won-the-junior",
+      "month": "2025-12",
+      "domain": "culture, film, music, or literature",
+      "statement": "France won the Junior Eurovision Song Contest in Tbilisi with Lou Deleuze performing \"Ce monde,\" giving the country its fourth victory in six years.",
+      "source": {
+        "url": "https://eurovision.com/newsroom/release/france-wins-junior-eurovision-2025/",
+        "title": "France wins Junior Eurovision Song Contest 2025 and becomes joint record holder"
+      }
+    },
+    {
+      "id": "2026-01-00-bytedance-finalized-a-majority",
+      "month": "2026-01",
+      "domain": "business, markets, or technology",
+      "statement": "ByteDance finalized a majority American-owned TikTok joint venture intended to avoid a United States ban and secure domestic user data.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/tiktok-reaches-deal-for-new-us-joint-venture-to-avoid-american-ban-4461801",
+        "title": "TikTok seals deal for new US joint venture to avoid American ban By Reuters"
+      }
+    },
+    {
+      "id": "2026-01-01-carlos-alcaraz-won-the",
+      "month": "2026-01",
+      "domain": "sport",
+      "statement": "Carlos Alcaraz won the Australian Open men's singles title by defeating Novak Djokovic, earning his first championship at Melbourne Park.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2026_Australian_Open_%E2%80%93_Men%27s_singles",
+        "title": "2026 Australian Open – Men's singles"
+      }
+    },
+    {
+      "id": "2026-01-02-a-fire-tore-through",
+      "month": "2026-01",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A fire tore through Le Constellation bar in Crans-Montana, killing about forty people and injuring more than one hundred partygoers.",
+      "source": {
+        "url": "https://www.investing.com/news/world-news/new-year-party-at-swiss-ski-resort-turned-into-a-disaster-zone-4427247",
+        "title": "New Year party at Swiss ski resort turned into a disaster zone By Reuters"
+      }
+    },
+    {
+      "id": "2026-02-00-amd-and-meta-announced",
+      "month": "2026-02",
+      "domain": "business, markets, or technology",
+      "statement": "AMD and Meta announced a multi-year partnership to deploy up to six gigawatts of AMD Instinct GPUs for Meta’s next-generation AI infrastructure.",
+      "source": {
+        "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000045/pressreleasedatedfebruary2.htm",
+        "title": "AMD and Meta Announce Strategic Partnership to Power the Next Generation of AI Infrastructure"
+      }
+    },
+    {
+      "id": "2026-02-01-the-seattle-seahawks-defeated",
+      "month": "2026-02",
+      "domain": "sport",
+      "statement": "The Seattle Seahawks defeated the New England Patriots in Super Bowl LX at Levi’s Stadium, with Bad Bunny performing the halftime show.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2026_in_California",
+        "title": "2026 in California"
+      }
+    },
+    {
+      "id": "2026-02-02-bad-bunny-won-the",
+      "month": "2026-02",
+      "domain": "culture, film, music, or literature",
+      "statement": "Bad Bunny won the Grammy Award for Album of the Year with DeBÍ TiRAR MáS FOToS, the first Spanish-language album to take the prize.",
+      "source": {
+        "url": "https://www.grammy.com/awards/categories/album-of-the-year/",
+        "title": "Album Of The Year Grammy Award Winners & Nominees"
+      }
+    },
+    {
+      "id": "2026-03-00-denmark-s-parliamentary-election",
+      "month": "2026-03",
+      "domain": "world politics or policy",
+      "statement": "Denmark's parliamentary election left Mette Frederiksen's left-wing bloc ahead in exit polls, yet neither major bloc secured a governing majority.",
+      "source": {
+        "url": "https://theprint.in/world/denmark-votes-in-election-clouded-by-trumps-greenland-push/2887525/",
+        "title": "Denmark votes in election clouded by Trump's Greenland push – ThePrint – ReutersFeed"
+      }
+    },
+    {
+      "id": "2026-03-01-nasa-s-four-artemis",
+      "month": "2026-03",
+      "domain": "science, space, or medicine",
+      "statement": "NASA's four Artemis II astronauts arrived in Florida and entered final launch preparations for humanity's first crewed lunar mission in decades.",
+      "source": {
+        "url": "https://www.investing.com/news/stock-market-news/nasas-artemis-astronauts-enter-final-preparations-for-moon-mission-4584505",
+        "title": "NASA’s Artemis astronauts enter final preparations for Moon mission By Reuters"
+      }
+    },
+    {
+      "id": "2026-03-02-apple-unveiled-refreshed-macbook",
+      "month": "2026-03",
+      "domain": "business, markets, or technology",
+      "statement": "Apple unveiled refreshed MacBook Air and MacBook Pro laptops using M5-series chips and increased base storage across the new lineup.",
+      "source": {
+        "url": "https://www.apple.com/newsroom/2026/03/apple-introduces-the-new-macbook-air-with-m5/",
+        "title": "Apple introduces the new MacBook Air with M5"
+      }
+    },
+    {
+      "id": "2026-03-03-the-film-one-battle",
+      "month": "2026-03",
+      "domain": "culture, film, music, or literature",
+      "statement": "The film 'One Battle After Another' won the Academy Award for best picture after a closely watched Oscars race.",
+      "source": {
+        "url": "https://theprint.in/world/one-battle-after-another-takes-best-picture-prize-at-the-oscars/2879905/",
+        "title": "'One Battle After Another' takes best picture prize at the Oscars – ThePrint – ReutersFeed"
+      }
+    },
+    {
+      "id": "2026-04-00-ucla-defeated-south-carolina",
+      "month": "2026-04",
+      "domain": "sport",
+      "statement": "UCLA defeated South Carolina by twenty-eight points to win the Division I women’s basketball championship, securing the Bruins’ first national title.",
+      "source": {
+        "url": "https://www.ncaa.com/news/basketball-women/article/2026-04-05/ucla-wins-2026-di-womens-basketball-championship",
+        "title": "UCLA wins the 2026 DI women's basketball championship"
+      }
+    },
+    {
+      "id": "2026-04-01-nasa-launched-artemis-ii",
+      "month": "2026-04",
+      "domain": "science, space, or medicine",
+      "statement": "NASA launched Artemis II with four astronauts, sending humanity beyond low Earth orbit for the first crewed deep-space mission since Apollo 17.",
+      "source": {
+        "url": "https://apnews.com/article/nasa-artemis-moonshot-launch-d4cee0936115bb4d995272f7e1b921c4",
+        "title": "NASA clears its Artemis moon rocket for an April launch with four astronauts following repairs"
+      }
+    },
+    {
+      "id": "2026-05-00-the-u-s-food",
+      "month": "2026-05",
+      "domain": "science, space, or medicine",
+      "statement": "The U.S. Food and Drug Administration granted accelerated approval to sonrotoclax for adults with relapsed or refractory mantle cell lymphoma after prior BTK treatment.",
+      "source": {
+        "url": "https://www.fda.gov/drugs/resources-information-approved-drugs/oncology-cancerhematologic-malignancies-approval-notifications",
+        "title": "Oncology (Cancer)/Hematologic Malignancies Approval Notifications | FDA"
+      }
+    },
+    {
+      "id": "2026-05-01-terra-quantum-announced-a",
+      "month": "2026-05",
+      "domain": "business, markets, or technology",
+      "statement": "Terra Quantum announced a definitive business combination with Axiom Intelligence Acquisition Corp 1 that valued the Swiss quantum company at $3.5 billion.",
+      "source": {
+        "url": "https://www.sec.gov/Archives/edgar/data/2057030/000121390026061057/ea029221901ex99-1.htm",
+        "title": "Terra Quantum and Axiom Intelligence Acquisition Corp 1 Announce Definitive Business Combination Agreement at a $3.5 Billion Equity Valuation"
+      }
+    },
+    {
+      "id": "2026-05-02-the-new-york-knicks",
+      "month": "2026-05",
+      "domain": "sport",
+      "statement": "The New York Knicks reached the NBA Finals by defeating the Cleveland Cavaliers in four games and lifting the Eastern Conference trophy.",
+      "source": {
+        "url": "https://www.reutersconnect.com/item/nba-playoffs-new-york-knicks-at-cleveland-cavaliers/dGFnOnJldXRlcnMuY29tLDIwMjY6bmV3c21sX01UMVVTQVRPREFZMjkwNTQ5MjU",
+        "title": "Licensable picture: NBA: Playoffs-New York Knicks at Cleveland Cavaliers | Reuters Connect"
+      }
+    },
+    {
+      "id": "2026-05-03-romanian-director-cristian-mungiu",
+      "month": "2026-05",
+      "domain": "culture, film, music, or literature",
+      "statement": "Romanian director Cristian Mungiu won the Palme d'Or at Cannes with “Fjord,” a Norwegian-set drama about clashing cultures and political polarization.",
+      "source": {
+        "url": "https://www.internazionale.it/ultime-notizie-reuters/2026/05/24/fjord-by-romania-s-cristian-mungiu-wins-cannes-top-prize-2",
+        "title": "‘Fjord’ by Romania’s Cristian Mungiu wins Cannes’ top prize"
+      }
+    },
+    {
+      "id": "2026-06-00-european-union-leaders-met",
+      "month": "2026-06",
+      "domain": "world politics or policy",
+      "statement": "European Union leaders met in Brussels without Viktor Orbán after Péter Magyar's government took office and pledged more constructive cooperation on Ukraine accession.",
+      "source": {
+        "url": "https://apnews.com/article/hungary-orban-magyar-brussels-eu-summit-b670ce6ff7eda4e15a35936b84dcf19e",
+        "title": "As Hungary’s Magyar joins EU summit, sidelined Orbán meets with far-right allies in Brussels"
+      }
+    },
+    {
+      "id": "2026-06-01-federal-health-advisers-recommended",
+      "month": "2026-06",
+      "domain": "science, space, or medicine",
+      "statement": "Federal health advisers recommended approval of Moderna's mFlusiva, the first influenza vaccine built with mRNA technology, for older Americans after reviewing company studies.",
+      "source": {
+        "url": "https://apnews.com/article/moderna-flu-vaccine-mrna-fda-advisers-mflusiva-488c68fe39244ca5ebad441a815b4ba2",
+        "title": "FDA panel backs first-of-its-kind flu shot using mRNA technology"
+      }
+    },
+    {
+      "id": "2026-06-02-openai-said-it-would",
+      "month": "2026-06",
+      "domain": "business, markets, or technology",
+      "statement": "OpenAI said it would respond constructively after several states subpoenaed the company in a probe into ChatGPT user safety ahead of its stock offering.",
+      "source": {
+        "url": "https://apnews.com/article/openai-chatgpt-subpoena-attorneys-general-probe-a95894407773307fae8ae3ce9742b586",
+        "title": "ChatGPT maker OpenAI says it will respond 'constructively' to multistate probe"
+      }
+    },
+    {
+      "id": "2026-06-03-virginia-evans-won-the",
+      "month": "2026-06",
+      "domain": "culture, film, music, or literature",
+      "statement": "Virginia Evans won the Women's Prize for Fiction with The Correspondent, while Lyse Doucet took the Women's Prize for Nonfiction in London.",
+      "source": {
+        "url": "https://apnews.com/article/women-prize-fiction-nonfiction-winners-1728c22d36354f288a2c380b29f11daa",
+        "title": "Virginia Evans and Lyse Doucet win Women’s Prize book awards"
+      }
+    },
+    {
+      "id": "2026-07-00-viktor-orban-declared-a",
+      "month": "2026-07",
+      "domain": "world politics or policy",
+      "statement": "Viktor Orban declared a peaceful resistance movement against Prime Minister Peter Magyar's government, accusing Tisza of dismantling Hungary's rule of law.",
+      "source": {
+        "url": "https://apnews.com/article/0d7fbb31fd85cc1ae30ca2b1e5c1b988",
+        "title": "Hungary's Orbán declares resistance movement against Magyar government's 'tyranny'"
+      }
+    },
+    {
+      "id": "2026-07-01-a-fire-broke-out",
+      "month": "2026-07",
+      "domain": "disasters, accidents, or extreme weather",
+      "statement": "A fire broke out on the Brooklyn Bridge during New York's fireworks show, sending smoke over the East River before firefighters extinguished it.",
+      "source": {
+        "url": "https://apnews.com/article/b33731a50f23433644bd8a879dcffc75",
+        "title": "Fire breaks out on Brooklyn Bridge during New York's fireworks show"
+      }
+    }
+  ]
+}
