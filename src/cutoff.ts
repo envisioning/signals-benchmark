@@ -469,6 +469,17 @@ function startingCeiling(model: string): number {
   return isReasoningModel(model) ? 8000 : 400
 }
 
+/**
+ * Thrown when the failure is the key, not the model. Grinding through
+ * 21 models x 215 questions against an exhausted budget produced 4,500
+ * guaranteed failures, twenty minutes of progress bars, and a results
+ * table reading "too-many-failures" for every model — which looks like a
+ * finding about the models. It isn't.
+ */
+export class FatalProbeError extends Error {}
+
+const FATAL_CODES = new Set([401, 402, 403])
+
 /** Cut off by the ceiling rather than finished. */
 function wasTruncated(res: Awaited<ReturnType<typeof openrouterChat>>): boolean {
   return res.success && res.raw?.choices?.[0]?.finish_reason === "length"
@@ -514,6 +525,9 @@ function makeAsker({ apiKey, model, timeoutMs }: ChatDeps) {
           if (!wasTruncated(res)) return res
           break // truncated: escalate the ceiling rather than retrying as-is
         }
+        // Auth and budget failures will not fix themselves on a retry,
+        // and every remaining call in the run will hit the same wall.
+        if (FATAL_CODES.has(res.code)) throw new FatalProbeError(res.message)
         lastFailure = res
       }
       if (attempt === 0) ceiling = Math.max(ceiling * 8, 4000)

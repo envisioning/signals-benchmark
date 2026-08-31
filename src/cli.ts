@@ -49,6 +49,7 @@ import {
   type QuizBank,
 } from "./cutoff-quiz.ts"
 import {
+  FatalProbeError,
   runIdentityProbe,
   runQuizProbe,
   runSelfReportProbe,
@@ -869,18 +870,33 @@ async function cmdCutoff(args: Args) {
         resolve(null)
       }, modelTimeoutMs).unref()
     )
-    const quizResult = await Promise.race([
-      runQuizProbe({
-        apiKey,
-        model,
-        bank,
-        items,
-        concurrency,
-        maxCostUsd,
-        onProgress: tick,
-      }),
-      deadline,
-    ])
+    let quizResult: Awaited<ReturnType<typeof runQuizProbe>> | null
+    try {
+      quizResult = await Promise.race([
+        runQuizProbe({
+          apiKey,
+          model,
+          bank,
+          items,
+          concurrency,
+          maxCostUsd,
+          onProgress: tick,
+        }),
+        deadline,
+      ])
+    } catch (e) {
+      if (e instanceof FatalProbeError) {
+        console.log(
+          `\r  ${pc.cyan(model)} … ${pc.red("aborted")}`.padEnd(60) +
+            `\n\n${pc.red("Stopping: " + e.message)}\n` +
+            pc.dim(
+              `  ${results.length} model(s) completed and saved. Fix the key, then re-run the same command — finished models are reused.`
+            )
+        )
+        break
+      }
+      throw e
+    }
     if (!quizResult) {
       console.log(
         `\r  ${pc.cyan(model)} … ${pc.red(`timed out after ${modelTimeoutMs / 60_000}m — skipped`)}`.padEnd(70)
@@ -918,7 +934,17 @@ async function cmdCutoff(args: Args) {
       cost_usd: cost,
     }
     results.push(row)
-    writeFileSync(path, JSON.stringify(row, null, 2))
+    // A probe that mostly failed is not a result worth keeping: cached,
+    // it would be reused by every later run and never retried, because
+    // reuse keys on the quiz fingerprint rather than on whether the
+    // measurement worked.
+    if (quiz.estimate_reason === "too-many-failures") {
+      console.log(
+        pc.dim(`     not cached — re-run to retry (${quiz.n_answered}/${quiz.n_questions} answered)`)
+      )
+    } else {
+      writeFileSync(path, JSON.stringify(row, null, 2))
+    }
 
     const est = quiz.estimate
       ? pc.green(quiz.estimate.month)
