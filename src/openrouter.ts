@@ -139,11 +139,21 @@ export async function openrouterChat(opts: ORChatOptions): Promise<ORResult> {
       }
     }
 
+    // OpenRouter normalizes web-grounded citations under
+    // `choice.message.annotations` (verified against Gemini :online and
+    // Perplexity Sonar — Nov 2025 probe). The pre-2025-11 code read
+    // `choice.annotations` which is never populated, so every
+    // verifier call silently returned zero sources. Fall back to
+    // top-level for forward compatibility if a future provider puts
+    // them on the choice.
+    const annotations: ORAnnotation[] | undefined =
+      (choice?.message?.annotations as ORAnnotation[] | undefined) ??
+      (choice?.annotations as ORAnnotation[] | undefined)
     return {
       success: true,
       text: content,
       usage: json.usage,
-      annotations: choice.annotations,
+      annotations,
       raw: json,
     }
   } catch (e: any) {
