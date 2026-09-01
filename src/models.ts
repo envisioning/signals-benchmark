@@ -10,6 +10,13 @@
  * IDs follow OpenRouter's `<vendor>/<model>` slug convention. If a slug
  * doesn't resolve at runtime, the run keeps going and the failure shows
  * up in the leaderboard as an error column.
+ *
+ * Providers retire slugs faster than you'd think — 15 entries here went
+ * dead between May and September 2026, including two that are still on
+ * the published leaderboard. Check the live catalog against this list
+ * before a paid run, or you'll buy a column of errors:
+ *   curl -s https://openrouter.ai/api/v1/models | jq -r '.data[].id'
+
  */
 
 export type BenchmarkModel = {
@@ -23,6 +30,10 @@ export type BenchmarkModel = {
 export const MODELS: BenchmarkModel[] = [
   // ─── OpenAI ───
   { id: "openai/gpt-5.4", vendor: "OpenAI", tier: "frontier" },
+  { id: "openai/gpt-5.6-luna-pro", vendor: "OpenAI", tier: "mid", notes: "gpt-5.6 efficient edition" },
+  { id: "openai/gpt-5.6-sol", vendor: "OpenAI", tier: "frontier", notes: "gpt-5.6 flagship edition" },
+  { id: "openai/gpt-5.6-terra", vendor: "OpenAI", tier: "mid", notes: "gpt-5.6 mid edition" },
+  { id: "openai/gpt-5.5", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4-mini", vendor: "OpenAI", tier: "mid" },
   { id: "openai/gpt-4.1", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-4.1-mini", vendor: "OpenAI", tier: "mid" },
@@ -31,6 +42,8 @@ export const MODELS: BenchmarkModel[] = [
 
   // ─── Anthropic ───
   { id: "anthropic/claude-opus-4.7", vendor: "Anthropic", tier: "frontier" },
+  { id: "anthropic/claude-opus-5", vendor: "Anthropic", tier: "frontier" },
+  { id: "anthropic/claude-opus-4.8", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-opus-4.6", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-sonnet-4.6", vendor: "Anthropic", tier: "frontier" },
   { id: "anthropic/claude-haiku-4.5", vendor: "Anthropic", tier: "small" },
@@ -38,11 +51,16 @@ export const MODELS: BenchmarkModel[] = [
 
   // ─── Google ───
   { id: "google/gemini-2.5-pro", vendor: "Google", tier: "frontier" },
+  { id: "google/gemini-3.7-flash", vendor: "Google", tier: "mid" },
+  { id: "google/gemini-3.5-flash", vendor: "Google", tier: "mid" },
+  { id: "google/gemini-3.1-pro-preview", vendor: "Google", tier: "frontier" },
+  { id: "google/gemini-3.1-flash-lite", vendor: "Google", tier: "small" },
   { id: "google/gemini-2.5-flash", vendor: "Google", tier: "mid" },
 
   // ─── xAI ───
-  { id: "x-ai/grok-4", vendor: "xAI", tier: "frontier" },
-  { id: "x-ai/grok-4.1-fast", vendor: "xAI", tier: "mid" },
+  { id: "x-ai/grok-4", vendor: "xAI", tier: "frontier" , disabled: true, notes: "retired from OpenRouter 2026-09" },
+  { id: "x-ai/grok-4.6", vendor: "xAI", tier: "frontier" },
+  { id: "x-ai/grok-4.1-fast", vendor: "xAI", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Meta (open weights) ───
   { id: "meta-llama/llama-4-maverick", vendor: "Meta", tier: "open" },
@@ -51,22 +69,27 @@ export const MODELS: BenchmarkModel[] = [
 
   // ─── Mistral ───
   { id: "mistralai/mistral-large-2512", vendor: "Mistral", tier: "frontier" },
-  { id: "mistralai/mistral-medium", vendor: "Mistral", tier: "mid" },
-  { id: "mistralai/codestral-2501", vendor: "Mistral", tier: "mid" },
+  { id: "mistralai/mistral-medium", vendor: "Mistral", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
+  { id: "mistralai/codestral-2501", vendor: "Mistral", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── DeepSeek ───
   { id: "deepseek/deepseek-v3.2", vendor: "DeepSeek", tier: "frontier" },
+  { id: "deepseek/deepseek-v4-pro-0813", vendor: "DeepSeek", tier: "frontier", notes: "dated snapshot" },
+  { id: "deepseek/deepseek-v4-pro", vendor: "DeepSeek", tier: "frontier" },
   { id: "deepseek/deepseek-r1", vendor: "DeepSeek", tier: "frontier" },
   { id: "deepseek/deepseek-chat", vendor: "DeepSeek", tier: "mid" },
 
   // ─── Qwen (Alibaba) ───
   { id: "qwen/qwen-plus", vendor: "Alibaba", tier: "mid" },
-  { id: "qwen/qwen-max", vendor: "Alibaba", tier: "frontier" },
+  { id: "qwen/qwen-max", vendor: "Alibaba", tier: "frontier" , disabled: true, notes: "retired from OpenRouter 2026-09" },
+  { id: "qwen/qwen3.8-max", vendor: "Alibaba", tier: "frontier" },
+  { id: "qwen/qwen3-max", vendor: "Alibaba", tier: "frontier" },
   { id: "qwen/qwen3-235b-a22b", vendor: "Alibaba", tier: "open" },
-  { id: "qwen/qwq-32b", vendor: "Alibaba", tier: "open" },
+  { id: "qwen/qwq-32b", vendor: "Alibaba", tier: "open" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Moonshot ───
   { id: "moonshotai/kimi-k2.5", vendor: "Moonshot", tier: "frontier" },
+  { id: "moonshotai/kimi-k3", vendor: "Moonshot", tier: "frontier" },
   { id: "moonshotai/kimi-k2", vendor: "Moonshot", tier: "open" },
 
   // ─── Perplexity (web-grounded) ───
@@ -82,36 +105,38 @@ export const MODELS: BenchmarkModel[] = [
 
   // ─── Cohere ───
   { id: "cohere/command-a", vendor: "Cohere", tier: "frontier" },
-  { id: "cohere/command-r-plus", vendor: "Cohere", tier: "mid" },
+  { id: "cohere/command-r-plus", vendor: "Cohere", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Microsoft ───
   { id: "microsoft/phi-4", vendor: "Microsoft", tier: "small" },
-  { id: "microsoft/phi-4-multimodal-instruct", vendor: "Microsoft", tier: "small" },
+  { id: "microsoft/phi-4-multimodal-instruct", vendor: "Microsoft", tier: "small" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── NVIDIA ───
-  { id: "nvidia/llama-3.1-nemotron-70b-instruct", vendor: "NVIDIA", tier: "open" },
+  { id: "nvidia/llama-3.1-nemotron-70b-instruct", vendor: "NVIDIA", tier: "open" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Inflection ───
-  { id: "inflection/inflection-3-productivity", vendor: "Inflection", tier: "mid" },
+  { id: "inflection/inflection-3-productivity", vendor: "Inflection", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── 01.AI ───
-  { id: "01-ai/yi-large", vendor: "01.AI", tier: "mid" },
+  { id: "01-ai/yi-large", vendor: "01.AI", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── AI21 ───
-  { id: "ai21/jamba-1.6-large", vendor: "AI21", tier: "mid" },
+  { id: "ai21/jamba-1.6-large", vendor: "AI21", tier: "mid" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Databricks ───
-  { id: "databricks/dbrx-instruct", vendor: "Databricks", tier: "open" },
+  { id: "databricks/dbrx-instruct", vendor: "Databricks", tier: "open" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Reka ───
-  { id: "reka/reka-flash-3", vendor: "Reka", tier: "mid" },
-  { id: "reka/reka-core", vendor: "Reka", tier: "frontier" },
+  { id: "rekaai/reka-flash-3", vendor: "Reka", tier: "mid" },
+  { id: "reka/reka-core", vendor: "Reka", tier: "frontier" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Liquid ───
-  { id: "liquid/lfm-40b", vendor: "Liquid", tier: "open" },
+  { id: "liquid/lfm-40b", vendor: "Liquid", tier: "open" , disabled: true, notes: "retired from OpenRouter 2026-09" },
 
   // ─── Z.AI (GLM) ───
   { id: "z-ai/glm-4.6", vendor: "Z.AI", tier: "frontier" },
+  { id: "z-ai/glm-5.3", vendor: "Z.AI", tier: "frontier" },
+  { id: "z-ai/glm-5.1", vendor: "Z.AI", tier: "frontier" },
 ]
 
 export const DEFAULT_JUDGE_MODEL = "openai/gpt-5.4:online"

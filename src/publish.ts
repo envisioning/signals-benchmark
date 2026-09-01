@@ -296,7 +296,7 @@ function main() {
   }
 
   const date = (args.date as string) || todayIso()
-  const destBenchDir = join(dest, "public", "benchmark")
+  const destBenchDir = join(dest, "apps", "website", "public", "benchmark")
   const overviewDest = join(destBenchDir, `${date}.json`)
   const detailDir = join(destBenchDir, date)
   // Optional: only present when `pnpm cutoff` has run against this run.
@@ -308,13 +308,18 @@ function main() {
   // The CURRENT_BENCHMARK_FILE constant moved to _shared.ts so client
   // components could import it (they can't pull from a Server-Component
   // page.tsx). Update there.
+  // signals-strict is a monorepo: the website is one app inside it, and
+  // the CURRENT_BENCHMARK_FILE constant lives in a shared module so
+  // client components can import it (they can't pull it from a Server
+  // Component page).
   const pagePath = join(
     dest,
+    "apps",
+    "website",
     "src",
-    "app",
-    "(public)",
+    "lib",
     "benchmark",
-    "_shared.ts"
+    "shared.ts"
   )
 
   if (!existsSync(destBenchDir)) {

@@ -61,6 +61,28 @@ export const PRESETS: Record<string, string[]> = {
     "nvidia/llama-3.3-nemotron-super-49b-v1.5",
   ],
 
+  /**
+   * Flagships that shipped after the 2026-05 cohort was frozen, plus the
+   * models already on the leaderboard that main's catalog was missing.
+   * Dated because the cohort will shift — see the naming note above.
+   *
+   * Intended use is the cheap paths: `pnpm cutoff --preset new-2026q3`
+   * adds them to the cutoff chart for cents, and
+   * `pnpm bench --into <run> --preset new-2026q3` adds them to the
+   * leaderboard at $3-5 each.
+   */
+  "new-2026q3": [
+    // Flagships released since the cohort was frozen
+    "anthropic/claude-opus-5",
+    "openai/gpt-5.6-luna-pro",
+    "google/gemini-3.7-flash",
+    "x-ai/grok-4.6",
+    "qwen/qwen3.8-max",
+    "z-ai/glm-5.3",
+    "moonshotai/kimi-k3",
+    "deepseek/deepseek-v4-pro-0813",
+  ],
+
   /** Tiny smoke set — runs in ~30 seconds, costs cents. */
   smoke: ["openai/gpt-4.1-mini", "anthropic/claude-haiku-4.5"],
 
