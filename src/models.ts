@@ -16,12 +16,22 @@ export type BenchmarkModel = {
   id: string
   vendor: string
   tier: "frontier" | "mid" | "small" | "open"
+  /**
+   * Which gateway serves this model. Defaults to "openrouter". Use
+   * "vercel" for models only reachable via the Vercel AI Gateway
+   * (OpenAI-compatible, billed on a separate VERCEL_AI_GATEWAY_KEY —
+   * the OpenRouter key does NOT work against it). The `id` must be the
+   * slug as that gateway spells it.
+   */
+  provider?: "openrouter" | "vercel"
   disabled?: boolean
   notes?: string
 }
 
 export const MODELS: BenchmarkModel[] = [
   // ─── OpenAI ───
+  { id: "openai/gpt-5.6-sol", vendor: "OpenAI", tier: "frontier", notes: "gpt-5.6 flagship edition" },
+  { id: "openai/gpt-5.6-terra", vendor: "OpenAI", tier: "mid", notes: "gpt-5.6 mid edition" },
   { id: "openai/gpt-5.4", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4-mini", vendor: "OpenAI", tier: "mid" },
   { id: "openai/gpt-4.1", vendor: "OpenAI", tier: "frontier" },
@@ -48,6 +58,8 @@ export const MODELS: BenchmarkModel[] = [
   { id: "meta-llama/llama-4-maverick", vendor: "Meta", tier: "open" },
   { id: "meta-llama/llama-4-scout", vendor: "Meta", tier: "open" },
   { id: "meta-llama/llama-3.3-70b-instruct", vendor: "Meta", tier: "open" },
+  // Vercel-only: not on OpenRouter. Runs via the Vercel AI Gateway.
+  { id: "meta/muse-spark-1.1", vendor: "Meta", tier: "frontier", provider: "vercel", notes: "Vercel AI Gateway only" },
 
   // ─── Mistral ───
   { id: "mistralai/mistral-large-2512", vendor: "Mistral", tier: "frontier" },
