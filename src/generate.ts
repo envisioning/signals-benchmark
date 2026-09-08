@@ -114,10 +114,12 @@ export async function generateForBrief({
       json_schema: { name: "signals", strict: true, schema: SIGNALS_RESPONSE_SCHEMA },
     },
     temperature: 0.7,
-    // 6000 was enough for non-reasoning models. Reasoning models eat
-    // 4-10k internal tokens before the answer; 16k covers them with
-    // headroom. Empirically: o3 truncated at 6k, fine at 16k.
-    maxTokens: reasoning ? 16_000 : 6000,
+    // 6000 covered most non-reasoning models, but verbose ones (e.g.
+    // gemini-3.5-flash) truncate mid-JSON on 16-signal briefs. 12k gives
+    // headroom without meaningfully changing cost for terser models.
+    // Reasoning models eat 4-10k internal tokens before the answer; 16k
+    // covers them with headroom. Empirically: o3 truncated at 6k, fine at 16k.
+    maxTokens: reasoning ? 16_000 : 12_000,
     // Cap reasoning effort — we don't need maximum thought for a list
     // generation task, and "minimal" keeps cost reasonable. Without
     // this, o3/o4-mini can burn $0.50+ on internal reasoning per call.

@@ -22,6 +22,8 @@ export type BenchmarkModel = {
 
 export const MODELS: BenchmarkModel[] = [
   // ─── OpenAI ───
+  { id: "openai/gpt-5.5-pro", vendor: "OpenAI", tier: "frontier" },
+  { id: "openai/gpt-5.5", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4", vendor: "OpenAI", tier: "frontier" },
   { id: "openai/gpt-5.4-mini", vendor: "OpenAI", tier: "mid" },
   { id: "openai/gpt-4.1", vendor: "OpenAI", tier: "frontier" },
@@ -39,8 +41,12 @@ export const MODELS: BenchmarkModel[] = [
   // ─── Google ───
   { id: "google/gemini-2.5-pro", vendor: "Google", tier: "frontier" },
   { id: "google/gemini-2.5-flash", vendor: "Google", tier: "mid" },
+  { id: "google/gemini-3.1-pro-preview", vendor: "Google", tier: "frontier" },
+  { id: "google/gemini-3.1-flash-lite", vendor: "Google", tier: "small" },
+  { id: "google/gemini-3.5-flash", vendor: "Google", tier: "mid" },
 
   // ─── xAI ───
+  { id: "x-ai/grok-4.3", vendor: "xAI", tier: "frontier" },
   { id: "x-ai/grok-4", vendor: "xAI", tier: "frontier" },
   { id: "x-ai/grok-4.1-fast", vendor: "xAI", tier: "mid" },
 
@@ -55,19 +61,25 @@ export const MODELS: BenchmarkModel[] = [
   { id: "mistralai/codestral-2501", vendor: "Mistral", tier: "mid" },
 
   // ─── DeepSeek ───
+  { id: "deepseek/deepseek-v4-pro", vendor: "DeepSeek", tier: "frontier" },
   { id: "deepseek/deepseek-v3.2", vendor: "DeepSeek", tier: "frontier" },
   { id: "deepseek/deepseek-r1", vendor: "DeepSeek", tier: "frontier" },
   { id: "deepseek/deepseek-chat", vendor: "DeepSeek", tier: "mid" },
 
   // ─── Qwen (Alibaba) ───
+  { id: "qwen/qwen3.6-max-preview", vendor: "Alibaba", tier: "frontier" },
   { id: "qwen/qwen-plus", vendor: "Alibaba", tier: "mid" },
   { id: "qwen/qwen-max", vendor: "Alibaba", tier: "frontier" },
   { id: "qwen/qwen3-235b-a22b", vendor: "Alibaba", tier: "open" },
   { id: "qwen/qwq-32b", vendor: "Alibaba", tier: "open" },
 
   // ─── Moonshot ───
+  { id: "moonshotai/kimi-k2.6", vendor: "Moonshot", tier: "frontier" },
   { id: "moonshotai/kimi-k2.5", vendor: "Moonshot", tier: "frontier" },
   { id: "moonshotai/kimi-k2", vendor: "Moonshot", tier: "open" },
+
+  // ─── Xiaomi ───
+  { id: "xiaomi/mimo-v2.5-pro", vendor: "Xiaomi", tier: "frontier" },
 
   // ─── Perplexity (web-grounded) ───
   { id: "perplexity/sonar-pro", vendor: "Perplexity", tier: "mid", notes: "web-grounded" },
@@ -111,6 +123,7 @@ export const MODELS: BenchmarkModel[] = [
   { id: "liquid/lfm-40b", vendor: "Liquid", tier: "open" },
 
   // ─── Z.AI (GLM) ───
+  { id: "z-ai/glm-5.1", vendor: "Z.AI", tier: "frontier" },
   { id: "z-ai/glm-4.6", vendor: "Z.AI", tier: "frontier" },
 ]
 
