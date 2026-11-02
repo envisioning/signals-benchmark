@@ -22,6 +22,7 @@ import type {
   ModelRun,
   ModelScore,
 } from "./types.ts"
+import { currencyScore } from "./evaluate.ts"
 
 export const WEIGHTS = {
   verifiability: 0.4,
@@ -135,7 +136,11 @@ export function scoreModels({
   for (const e of evaluations) evalByBriefModel.set(`${e.brief_id}::${e.model}`, e)
 
   // Per-brief coverage (needs the full cohort).
-  const briefIds = [...new Set(runs.map((r) => r.brief_id))]
+  // Score only briefs we have a definition for. A run file from another
+  // brief would otherwise count with coverage 0 and drag the composite.
+  const briefIds = [...new Set(runs.map((r) => r.brief_id))].filter((id) =>
+    briefById.has(id)
+  )
   const coverageByBrief: Record<string, Record<string, ReturnType<typeof computeCoverage>[string]>> = {}
   for (const bid of briefIds) {
     const brief = briefById.get(bid)
@@ -164,7 +169,18 @@ export function scoreModels({
 
       const verifiability = Math.round(mean(ev.evaluations.map((e) => e.verifiability.score)))
       const specificity = Math.round(mean(ev.evaluations.map((e) => e.specificity.score)))
-      const currency = Math.round(mean(ev.evaluations.map((e) => e.currency.score)))
+      // Re-derive currency against the generation time, so runs judged
+      // months apart stay comparable. Falls back to the stored score.
+      const asOf = Date.parse(run.started_at)
+      const currency = Math.round(
+        mean(
+          ev.evaluations.map((e) =>
+            e.currency.newest_source_date && !Number.isNaN(asOf)
+              ? currencyScore(e.currency.newest_source_date, asOf)
+              : e.currency.score
+          )
+        )
+      )
       const coverage = coverageByBrief[bid]?.[model]?.score ?? 0
 
       const composite = Math.round(
@@ -190,6 +206,9 @@ export function scoreModels({
       nSignalsTotal += run.signals.length
       briefsCovered++
     }
+
+    // A model with no scored brief (all generations failed) has no row.
+    if (briefsCovered === 0) continue
 
     scored.push({
       model,

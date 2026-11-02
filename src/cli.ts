@@ -18,6 +18,8 @@
  *   --spec-judge anthropic/claude-sonnet-4.6
  *   --concurrency-gen  4
  *   --concurrency-eval 4
+ *   --provider openrouter|vercel   route the whole cohort (default: per model, else openrouter)
+ *                         per-model: `--models a@vercel,b` — judges always use OpenRouter
  *   --dry-run             print the plan and exit without spending tokens
  *
  * Output lives under ./results/<run-id>/ — one JSON file per (brief,model)
@@ -26,7 +28,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, unlinkSync } from "node:fs"
 import { resolve, join } from "node:path"
 import pc from "picocolors"
-import { loadEnv, requireKey } from "./env.ts"
+import { loadEnv, requireKey, getVercelKey } from "./env.ts"
 import {
   filterModels,
   DEFAULT_JUDGE_MODEL,
@@ -102,7 +104,7 @@ async function cmdRun(args: Args) {
   const concurrencyGen = Number(args["concurrency-gen"] ?? process.env.GENERATE_CONCURRENCY ?? 4)
   const concurrencyEval = Number(args["concurrency-eval"] ?? process.env.EVAL_CONCURRENCY ?? 4)
 
-  const briefs = getBriefs({
+  let briefs = getBriefs({
     ids: list(args.briefs),
     sectors: list(args.sectors),
   })
@@ -117,6 +119,24 @@ async function cmdRun(args: Args) {
       process.exit(1)
     }
     modelIdsOverride = preset
+  }
+  // Per-model gateway: `slug@vercel` / `slug@openrouter` in --models or a
+  // preset, `--provider vercel|openrouter` for the whole cohort, else the
+  // catalog's `provider`, else OpenRouter. The suffix is stripped here so
+  // ids in results/ and the cache stay bare slugs.
+  const providerOf = new Map<string, "openrouter" | "vercel">()
+  if (modelIdsOverride) {
+    modelIdsOverride = modelIdsOverride.map((raw) => {
+      const m = raw.match(/^(.+)@(openrouter|vercel)$/)
+      if (!m) return raw
+      providerOf.set(m[1], m[2] as "openrouter" | "vercel")
+      return m[1]
+    })
+  }
+  const cohortProvider = args.provider as string | undefined
+  if (cohortProvider !== undefined && cohortProvider !== "openrouter" && cohortProvider !== "vercel") {
+    console.error(pc.red(`--provider must be "openrouter" or "vercel", got: ${cohortProvider}`))
+    process.exit(1)
   }
   const models = filterModels({
     ids: modelIdsOverride,
@@ -142,6 +162,25 @@ async function cmdRun(args: Args) {
   }
   if (models.length === 0) {
     console.error(pc.red("No models selected."))
+    process.exit(1)
+  }
+
+  for (const m of models) {
+    m.provider =
+      providerOf.get(m.id) ?? (cohortProvider as "openrouter" | "vercel" | undefined) ?? m.provider ?? "openrouter"
+  }
+  // Fail before spending anything on OpenRouter if a Vercel key is needed
+  // and missing.
+  const vercelModels = models.filter((m) => m.provider === "vercel")
+  const vercelKey = vercelModels.length ? getVercelKey() : null
+  if (vercelModels.length && !vercelKey) {
+    console.error(
+      pc.red(
+        `Routed to Vercel: ${vercelModels.map((m) => m.id).join(", ")}.\n` +
+          "Set VERCEL_AI_GATEWAY_KEY in .env (the OPENROUTER_API_KEY does not work against Vercel),\n" +
+          "or drop the @vercel / --provider vercel routing."
+      )
+    )
     process.exit(1)
   }
 
@@ -182,6 +221,11 @@ async function cmdRun(args: Args) {
       )
       process.exit(1)
     }
+    // Without an explicit subset, extend the run on its own briefs, not
+    // on the whole bank.
+    if (!args.briefs && !args.sectors) {
+      briefs = BRIEFS.filter((b) => existingMeta!.brief_ids.includes(b.id))
+    }
   }
 
   mkdirSync(join(runDir, "runs"), { recursive: true })
@@ -213,9 +257,11 @@ async function cmdRun(args: Args) {
   console.log(pc.bold(pc.cyan(`\nSignals Benchmark — ${runId}`)))
   console.log(
     pc.dim(
-      `  ${briefs.length} briefs · ${models.length} models · judge: ${judgeModel} · spec: ${specJudge}`
+      `  ${briefs.length} briefs · ${models.length} models · judge: ${effectiveJudge} · spec: ${effectiveSpec}`
     )
   )
+  const onVercel = models.filter((m) => m.provider === "vercel").length
+  if (onVercel) console.log(pc.dim(`  gateway: ${onVercel} via Vercel, ${models.length - onVercel} via OpenRouter`))
   console.log(pc.dim(`  results → ${runDir}\n`))
 
   if (args["dry-run"]) {
@@ -276,7 +322,13 @@ async function cmdRun(args: Args) {
         done++
         return
       }
-      const run = await generateForBrief({ apiKey, brief, model: model.id })
+      const provider = model.provider ?? "openrouter"
+      const run = await generateForBrief({
+        apiKey: provider === "vercel" ? vercelKey! : apiKey,
+        brief,
+        model: model.id,
+        provider,
+      })
       runs.push(run)
       done++
       const status = run.error
@@ -431,8 +483,12 @@ async function cmdRun(args: Args) {
       )
     )
   }
+  // Score on every brief of the run, not only the --briefs subset of
+  // this invocation: a brief without its definition gets no coverage.
   const scores = scoreModels({
-    briefs,
+    briefs: intoExistingRun
+      ? BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
+      : briefs,
     runs: allRuns,
     evaluations: allEvaluations,
   })
@@ -517,8 +573,11 @@ async function cmdResume(args: Args) {
   }
   const meta: BenchmarkRun = JSON.parse(readFileSync(metaPath, "utf-8"))
 
-  const newJudge = (args.judge as string) || DEFAULT_JUDGE_MODEL
-  const newSpec = (args["spec-judge"] as string) || DEFAULT_SPECIFICITY_JUDGE
+  // Default to the run's own judges: resuming on another judge would
+  // mix incompatible verdicts.
+  const newJudge = (args.judge as string) || meta.judge_model || DEFAULT_JUDGE_MODEL
+  const newSpec =
+    (args["spec-judge"] as string) || meta.specificity_judge || DEFAULT_SPECIFICITY_JUDGE
   const concurrencyEval = Number(args["concurrency-eval"] ?? process.env.EVAL_CONCURRENCY ?? 4)
 
   const briefs = BRIEFS.filter((b) => meta.brief_ids.includes(b.id))

@@ -6,7 +6,7 @@
  * this step — that would unfairly advantage web-grounded models on the
  * verifiability axis (which is exactly what the *judge* tests later).
  */
-import { openrouterChat, extractJson } from "./openrouter.ts"
+import { openrouterChat, vercelChat, extractJson } from "./openrouter.ts"
 import type { Brief, ModelRun, GeneratedSignal } from "./types.ts"
 
 const SIGNALS_RESPONSE_SCHEMA = {
@@ -80,6 +80,31 @@ export function isReasoningModel(model: string): boolean {
 }
 
 /**
+ * Models that think internally by default even though they aren't named
+ * for it (verified 2026-10-01: gpt-6-luna truncated to unparseable JSON
+ * and mimo-v2.6-pro returned an empty body at the 6k ceiling). They need
+ * the bigger ceiling, but NOT the `reasoning` request param — earlier
+ * runs of the gpt-5.x/claude lines went without it and scores must stay
+ * comparable.
+ */
+export function needsBigCeiling(model: string): boolean {
+  return (
+    isReasoningModel(model) ||
+    /^openai\/gpt-(5\.[5-9]|6)/.test(model) ||
+    /^anthropic\/claude-(fable|opus-5|sonnet-5|haiku-5)/.test(model) ||
+    /^google\/gemini-3\.[6-9]/.test(model) ||
+    /^x-ai\/grok-4\.[5-9]/.test(model) ||
+    /^qwen\/qwen3\.[6-9]/.test(model) ||
+    /^z-ai\/glm-5\.[3-9]/.test(model) ||
+    /^moonshotai\/kimi-k[3-9]/.test(model) ||
+    /^deepseek\/deepseek-v4/.test(model) ||
+    /^meta\/muse-spark/.test(model) ||
+    /^xiaomi\/mimo-v2\.[5-9]/.test(model) ||
+    /^cohere\/command-a-plus/.test(model)
+  )
+}
+
+/**
  * OpenAI's o-series doesn't accept OpenRouter's `reasoning` parameter
  * the same way other reasoning models do (they manage reasoning
  * internally + bill it as completion tokens). The Signals production
@@ -94,18 +119,23 @@ export async function generateForBrief({
   apiKey,
   brief,
   model,
+  provider = "openrouter",
   timeoutMs,
 }: {
   apiKey: string
   brief: Brief
   model: string
+  provider?: "openrouter" | "vercel"
   timeoutMs?: number
 }): Promise<ModelRun> {
   const started = Date.now()
   const startedIso = new Date(started).toISOString()
 
-  const reasoning = isReasoningModel(model)
-  const result = await openrouterChat({
+  // Both gateways share the ORChatOptions/ORResult contract, so only the
+  // client changes per provider.
+  const chat = provider === "vercel" ? vercelChat : openrouterChat
+  const reasoning = needsBigCeiling(model)
+  const result = await chat({
     apiKey,
     model,
     messages: [{ role: "user", content: buildPrompt(brief) }],
@@ -133,6 +163,7 @@ export async function generateForBrief({
     return {
       brief_id: brief.id,
       model,
+      provider,
       started_at: startedIso,
       finished_at: finishedAt,
       duration_ms,
@@ -165,6 +196,7 @@ export async function generateForBrief({
     return {
       brief_id: brief.id,
       model,
+      provider,
       started_at: startedIso,
       finished_at: finishedAt,
       duration_ms,
@@ -179,6 +211,7 @@ export async function generateForBrief({
   return {
     brief_id: brief.id,
     model,
+    provider,
     started_at: startedIso,
     finished_at: finishedAt,
     duration_ms,

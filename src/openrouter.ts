@@ -160,6 +160,112 @@ export async function openrouterChat(opts: ORChatOptions): Promise<ORResult> {
 }
 
 /**
+ * Vercel AI Gateway caller. Same request/response contract as
+ * `openrouterChat` (returns the identical `ORResult` union) so callers
+ * can swap the two by provider without branching on the shape.
+ *
+ * The gateway is OpenAI Chat Completions compatible, so the body is a
+ * subset of the OpenRouter one: model + messages + response_format +
+ * temperature + max_tokens. OpenRouter-only knobs (`usage.include`,
+ * `web_search_options`, `reasoning`, HTTP-Referer/X-Title headers) are
+ * intentionally omitted — they're either unsupported or no-ops here.
+ * `usage.cost` is surfaced when the gateway returns it; when it doesn't,
+ * cost stays undefined (billing is tracked on the Vercel side, not via
+ * OpenRouter's key-usage diff).
+ */
+export async function vercelChat(opts: ORChatOptions): Promise<ORResult> {
+  const url = "https://ai-gateway.vercel.sh/v1/chat/completions"
+  const body: Record<string, any> = {
+    model: opts.model,
+    messages: opts.messages,
+    user: "signals-benchmark",
+  }
+  if (opts.responseFormat) body.response_format = opts.responseFormat
+  if (opts.temperature !== undefined) body.temperature = opts.temperature
+  if (opts.maxTokens !== undefined) body.max_tokens = opts.maxTokens
+
+  const controller = new AbortController()
+  const timeoutMs = opts.timeoutMs ?? 300_000
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+    clearTimeout(timer)
+
+    const text = await response.text()
+    let json: any
+    try {
+      json = JSON.parse(text)
+    } catch {
+      return {
+        success: false,
+        code: response.status,
+        message: `Non-JSON response: ${text.slice(0, 400)}`,
+      }
+    }
+
+    if (json?.error) {
+      const message =
+        typeof json.error === "string"
+          ? json.error
+          : (json.error.message ?? "Unknown Vercel AI Gateway error")
+      return {
+        success: false,
+        code: json.error.code ?? response.status,
+        message,
+        raw: json,
+      }
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        code: response.status,
+        message: `HTTP ${response.status}: ${text.slice(0, 300)}`,
+        raw: json,
+      }
+    }
+
+    const choice = json?.choices?.[0]
+    const content: string | undefined = choice?.message?.content ?? choice?.text
+    if (!content) {
+      return {
+        success: false,
+        code: 500,
+        message: "Empty response (no message content)",
+        raw: json,
+      }
+    }
+
+    return {
+      success: true,
+      text: content,
+      usage: json.usage,
+      annotations: choice.annotations,
+      raw: json,
+    }
+  } catch (e: any) {
+    clearTimeout(timer)
+    return {
+      success: false,
+      code: 500,
+      message:
+        e?.name === "AbortError"
+          ? `Timed out after ${timeoutMs}ms`
+          : `Fetch error: ${e?.message ?? String(e)}`,
+    }
+  }
+}
+
+/**
  * Embedding call. Used by the semantic cache to detect near-duplicate
  * signals across models / runs. text-embedding-3-small is the cheapest
  * adequate option on OpenRouter (~$0.02 / 1M input tokens) — for a

@@ -83,6 +83,68 @@ export const PRESETS: Record<string, string[]> = {
     "deepseek/deepseek-v4-pro-0813",
   ],
 
+  /**
+   * Everything big that shipped on OpenRouter after the 2026-05 run's
+   * last top-up (2026-07-11), checked against the live catalog on
+   * 2026-10-01. Supersedes new-2026q3 for gpt-6, grok-4.7, gemini-3.8
+   * and the Qwen/GLM snapshots.
+   *
+   * Use: `pnpm bench --into <run> --preset new-2026q4`. --into pins the
+   * run's judges, so the scores stay comparable. ~$4/model.
+   */
+  "new-2026q4": [
+    "openai/gpt-6.1-sol",
+    "openai/gpt-6-astra",
+    "openai/gpt-6-luna",
+    "anthropic/claude-fable-5.1",
+    "anthropic/claude-opus-5.5",
+    "anthropic/claude-opus-5",
+    "anthropic/claude-sonnet-5.5",
+    "google/gemini-3.8-flash",
+    "x-ai/grok-4.7",
+    "qwen/qwen3.8-max-0902",
+    "z-ai/glm-5.3",
+    "moonshotai/kimi-k3",
+    "deepseek/deepseek-v4-pro-0813",
+    "meta/muse-spark-1.3",
+    "xiaomi/mimo-v2.6-pro",
+    "cohere/command-a-plus",
+    // shipped 2026-10-01..2026-11-01, added 2026-11-01
+    "openai/gpt-6.1-terra",
+    "anthropic/claude-haiku-5.5",
+    "google/gemini-4-argon",
+    "mistralai/mistral-large-4-0",
+    "moonshotai/kimi-k3.1-pro",
+    "meta/muse-wonder",
+    "stepfun/step-5-preview",
+  ],
+
+  /**
+   * The lean cut of new-2026q4: the flagship and the workhorse of each
+   * lab. Run on the six briefs of results/2026-q4-core (healthcare,
+   * fintech, energy, geopolitics, ai-infra, retail). On the 2026-05 run
+   * those six rank the 30 full-coverage models like all twelve do
+   * (Spearman 0.992, mean composite shift 0.7, no model moves more than
+   * three places) at half the judging cost.
+   *
+   * Use: `pnpm bench --into 2026-q4-core --preset core-2026q4`.
+   */
+  "core-2026q4": [
+    "openai/gpt-6.1-sol",
+    "openai/gpt-6-luna",
+    "anthropic/claude-fable-5.1",
+    "anthropic/claude-opus-5.5",
+    "anthropic/claude-sonnet-5.5",
+    "anthropic/claude-haiku-5.5",
+    "google/gemini-4-argon",
+    "google/gemini-3.8-flash",
+    "x-ai/grok-4.7",
+    "moonshotai/kimi-k3.1-pro",
+    "deepseek/deepseek-v4-pro-0813",
+    "qwen/qwen3.8-max-0902",
+    "z-ai/glm-5.3",
+  ],
+
   /** Tiny smoke set — runs in ~30 seconds, costs cents. */
   smoke: ["openai/gpt-4.1-mini", "anthropic/claude-haiku-4.5"],
 
