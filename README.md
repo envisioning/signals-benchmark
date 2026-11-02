@@ -120,27 +120,62 @@ The method is adapted from Shrivu Shankar's [Exploring Claude/GPT knowledge cuto
 
 | Probe | What it asks | What it gives you |
 |---|---|---|
-| **Quiz** | 8-way multiple choice about real events, bucketed by month | Accuracy decays from a plateau to chance (12.5%) as questions move past training. The cutoff is read off that curve. |
+| **Quiz** | 8-way multiple choice: which of these real events happened in *this* month? | Accuracy drops from a plateau to chance past the cutoff. The month of the drop is the estimate. |
 | **Self-report** | "What month is it?" / "When does your training data end?" × 5 phrasings | What the model *believes*, and how much that belief moves with the phrasing. |
-| **Identity** | "What model are you?" × 5 phrasings | Doesn't date anything on its own, but a model that thinks it's its own predecessor tells you something about what it was trained on. |
+| **Identity** | "What model are you?" × 5 phrasings | Doesn't date anything alone, but a model that thinks it's its own predecessor tells you what it was trained on. |
 
-**Reading the curve.** We take the **midpoint** of the decay, not its start or end — the same choice the source method makes, for the same two reasons: models partially anticipate near-future events (so accuracy starts falling before the cutoff), and the last months before a cutoff are undersampled in training data (so it sags early too). When the curve can't support an estimate, the runner reports *why* (`no-decline-in-window`, `no-signal`, `too-few-buckets`) instead of guessing.
+### Every wrong answer is a real event
 
-### Build the quiz bank (one-off)
+This is the part that took three attempts to get right, and it's the part to preserve if you change anything else.
 
-The bank isn't hand-written — a web-grounded model drafts it and a second grounded model from a different vendor verifies every item before it's allowed in:
+A quiz item leaks whenever an option can be ruled out **without knowing the month**. Fabricated wrong answers always leak, however carefully they're written:
+
+| Wrong answers are… | gpt-4.1-mini scores on events ~14 months past its cutoff |
+|---|---:|
+| invented entities ("the *Helioscope* mission") | 40% — it knows which names don't exist |
+| real entities, false claims ("the ECB moved to Lisbon") | 72% — it knows which claims are implausible |
+| **real events from other months** | **6%** — chance is 12.5% |
+
+So the bank stores **verified real events**, and items are assembled at run time: the true option is this month's event, the other seven are real events from months at least `DEFAULT_MONTH_GAP` (9) away, same domain where possible. Every option really happened; only *when* separates them. That gap is calibrated too — at 2 months even gpt-4.1 couldn't place events it knew (plateau 50%), which flattens the step the estimator looks for; at 9 months the plateau reaches 99% without moving the estimate. The cost is resolution: this can't distinguish cutoffs a month apart, and doesn't claim to.
+
+### Reading the curve
+
+The cutoff is fitted as a **change point** — the split minimising weighted squared error between a "knows it" level and a "doesn't" level — not as a threshold crossing. Both levels are measured; the lower one is usually above chance, and assuming otherwise dates every model years late. Buckets are small, so single-bucket noise would derail a crossing rule; fitting two levels uses every bucket at once, weighted by bucket size.
+
+When the curve can't support an estimate, the runner says why (`no-decline-in-window`, `no-signal`, `too-few-buckets`) instead of guessing.
+
+### Calibration
+
+Against models with published cutoffs, on 146 questions spanning 2023-01 → 2026-07:
+
+| Model | Published | Measured | Error |
+|---|---|---|---:|
+| `meta-llama/llama-3.3-70b-instruct` | 2023-12 | 2023-11 | −1 mo |
+| `openai/gpt-4.1` | 2024-06 | 2024-08 | +2 mo |
+| `google/gemini-2.5-flash` | 2025-01 | 2024-08 | −5 mo |
+
+Mean offset −1.3 months, sd 2.9, ordering preserved. Treat a result as ±3 months, and read the ordering rather than the absolute dates.
+
+**One caveat that matters:** the probe conflates knowledge recency with *recall precision*. `gpt-4.1-mini` shares a documented cutoff with `gpt-4.1` but measures 10 months earlier, because it places events it knows far less reliably (plateau 69% vs 99%). A low plateau means a low-confidence estimate — it's reported alongside every result for exactly that reason.
+
+### Build the bank (one-off)
 
 ```bash
-pnpm cutoff:build --from 2023-01          # 36 months × 5 items, ~$6-10
+pnpm cutoff:build --from 2023-01          # ~43 months, 20-40 min
+pnpm cutoff:build --top-up 4              # revisit months holding < 4 events
 pnpm cutoff:build --no-verify             # half the cost, more noise
 pnpm cutoff:build --dry-run
 ```
 
-Items are rejected before they cost anything if they leak a date, if the true statement is a length outlier vs. its distractors (a classic multiple-choice tell), or if they lack a source URL. Then the verifier drops anything it can't confirm happened in that month, or where a "false" statement turns out to be real.
+A web-grounded model drafts each month's events; a second grounded model from a different vendor confirms each one happened **in that month** before it's banked. The month matters in both directions — a wrongly dated event is a wrong answer key in its own month *and* a secretly-correct wrong answer everywhere else.
 
-Output is `data/cutoff-quiz.json`, **committed** — every model must answer the same questions for the numbers to mean anything. Skim it before committing: if you can spot the true answers, so can the models, and the plateau will read too high.
+It's a long run against grounded models, so it's built to be interrupted: each month is drafted, verified and **written to disk before the next one finishes**, and re-running skips months the bank already has. Ctrl-C at minute 30 keeps 30 minutes of work. Progress lines carry a running count, an ETA, and the amount billed so far.
 
-Re-running **appends**: months already in the bank are left byte-identical, only missing months get drafted. That makes the quarterly "extend the tail" refresh cost under a dollar and keeps previously published curves valid.
+Output is `data/cutoff-quiz.json`, **committed** — every model must answer the same questions for the numbers to mean anything. `auditBank` reports, after every build, how often the true answer is the longest or shortest option; anything much above chance means the events aren't written to one standard and the bank needs work.
+
+Re-running **appends**: months already in the bank are left byte-identical, so the quarterly "extend the tail" refresh and resuming an interrupted build both cost only what's missing.
+
+Appending does, however, change the exam. Every question's wrong answers are drawn from the whole event pool, so adding a month rewrites items in every other month too — a model probed before the append has not answered the same questions as one probed after. Each result records a fingerprint of the pool it answered; `pnpm cutoff` re-probes any model whose fingerprint no longer matches and refuses to publish a report that mixes two. Budget for re-probing the cohort whenever you extend the bank.
 
 ### Run the probe
 
@@ -148,14 +183,13 @@ Re-running **appends**: months already in the bank are left byte-identical, only
 pnpm cutoff                               # latest run's cohort
 pnpm cutoff --run <run-id>
 pnpm cutoff --preset frontier
+pnpm cutoff --gap 12                      # wider gap: easier questions, coarser resolution
 pnpm cutoff --per-month 3 --no-identity   # cheaper
 ```
 
-By default it probes exactly the cohort of an existing benchmark run, so the cutoff rows line up 1:1 with the leaderboard rows. Results land in `results/<run-id>/cutoff.json` (plus one file per model under `cutoff/`, which is reused on re-runs unless you pass `--refresh`). `bench:publish` picks the report up automatically.
+By default it probes exactly the cohort of an existing benchmark run, so cutoff rows line up 1:1 with leaderboard rows. Results land in `results/<run-id>/cutoff.json` (plus one file per model under `cutoff/`, reused on re-runs unless you pass `--refresh`). `bench:publish` picks the report up automatically.
 
-**Cost:** dominated by the quiz — `months × per-month` short calls per model. A 36-month bank at 5/month is 180 calls per model, roughly $0.10–0.60 depending on the model.
-
----
+**Cost:** one short call per question per model. Measured over 146 questions: $0.02 for `gpt-4.1-mini`, $0.11 for `gpt-4.1`. Reasoning models cost several times more, since they think before answering a one-letter question.
 
 ## Cost discipline
 

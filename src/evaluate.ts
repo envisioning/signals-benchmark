@@ -31,6 +31,14 @@ import type {
  * — no need to wipe `cache/` manually.
  */
 export const RUBRIC_VERSION = "2026-05-v1"
+/**
+ * Verifier prompt layout. v2 (2026-11) sends the instructions as the
+ * system message and only the signal as the user message: OpenRouter's
+ * web search builds its query from the user message, and with the whole
+ * prompt there it returned unrelated pages for every claim. Bumping this
+ * keys the verifier cache apart from verdicts judged on bad search.
+ */
+export const VERIFIER_PROMPT_VERSION = "2026-11-v2"
 
 /** What we persist per verifier cache entry. */
 type VerifierCacheValue = {
@@ -65,7 +73,7 @@ Definitions (pick ONE):
 - fabricated: Contradicted by strong evidence; demonstrably false.
 `.trim()
 
-function verifyPrompt(brief: Brief, signal: GeneratedSignal): string {
+function verifyInstructions(brief: Brief): string {
   return `You are a Signal Verification Assistant.
 Evaluate the signal in the context of: ${brief.topic}.
 
@@ -78,8 +86,11 @@ Method:
 
 Output STRICTLY as JSON with this shape (no markdown, no prose):
 {"verdict":"grounded|speculative|future|indicative|dubious|fabricated","newest_source_date":"YYYY-MM-DD|null","comments":"<=40 words"}
+`
+}
 
-Signal:
+function verifySignal(signal: GeneratedSignal): string {
+  return `Signal:
 Title: ${signal.title}
 Summary: ${signal.summary}
 `
@@ -115,11 +126,16 @@ Summary: ${signal.summary}
 `
 }
 
-function currencyScore(newestDateIso?: string): number {
+/**
+ * Months between the newest source and `asOf`. Pass the generation time
+ * as `asOf`: measured against the judging time, a model judged months
+ * after another scores lower on the same evidence.
+ */
+export function currencyScore(newestDateIso?: string, asOf: number = Date.now()): number {
   if (!newestDateIso) return 0
   const t = Date.parse(newestDateIso)
   if (Number.isNaN(t)) return 0
-  const monthsAgo = (Date.now() - t) / (1000 * 60 * 60 * 24 * 30.44)
+  const monthsAgo = (asOf - t) / (1000 * 60 * 60 * 24 * 30.44)
   if (monthsAgo <= 3) return 100
   if (monthsAgo <= 6) return 85
   if (monthsAgo <= 12) return 70
@@ -154,7 +170,7 @@ async function evaluateSignal({
 }> {
   const verifierKey: CacheKey = {
     namespace: "verifier",
-    rubric_version: RUBRIC_VERSION,
+    rubric_version: `${RUBRIC_VERSION}+${VERIFIER_PROMPT_VERSION}`,
     judge_model: judgeModel,
     brief_id: brief.id,
     title: signal.title,
@@ -196,10 +212,18 @@ async function evaluateSignal({
           const r = await openrouterChat({
             apiKey,
             model: judgeModel,
-            messages: [{ role: "user", content: verifyPrompt(brief, signal) }],
+            messages: [
+              { role: "system", content: verifyInstructions(brief) },
+              { role: "user", content: verifySignal(signal) },
+            ],
             webSearch: true,
             timeoutMs: 120_000,
           })
+          // Fail closed: a failed call (402 out of credit, dead key) must
+          // stop the run, not be saved as a default verdict.
+          if (!r.success) {
+            throw new Error(`verifier judge failed (${r.code}): ${r.message.slice(0, 160)}`)
+          }
           const value: VerifierCacheValue = {
             verdict: "dubious",
             sources: [],
@@ -235,6 +259,11 @@ async function evaluateSignal({
             messages: [{ role: "user", content: specificityPrompt(signal) }],
             timeoutMs: 60_000,
           })
+          // Fail closed: a failed call (402 out of credit, dead key) must
+          // stop the run, not be saved as a default verdict.
+          if (!r.success) {
+            throw new Error(`specificity judge failed (${r.code}): ${r.message.slice(0, 160)}`)
+          }
           const value: SpecCacheValue = { score: 50 }
           let usageCost = 0
           if (r.success) {

@@ -24,6 +24,8 @@ export type GeneratedSignal = {
 export type ModelRun = {
   brief_id: string
   model: string
+  /** Gateway that served the call; absent on runs before 2026-10 (all OpenRouter). */
+  provider?: "openrouter" | "vercel"
   started_at: string
   finished_at: string
   duration_ms: number

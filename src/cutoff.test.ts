@@ -22,7 +22,6 @@ import {
   estimateCutoff,
   parseMonthAnswer,
   parseOptionLetter,
-  smoothSeries,
   type QuizAnswer,
   type QuizBucket,
 } from "./cutoff.ts"
@@ -159,14 +158,6 @@ test("estimate survives per-bucket noise", () => {
   )
 })
 
-test("smoothing keeps holes and shrinks the window at the edges", () => {
-  const s = smoothSeries([1, null, 0, 0.5], 3)
-  assert.equal(s[1], null)
-  assert.equal(s[0], 1) // only neighbour is a hole, so the value stands
-  assert.equal(s[2], 0.25) // mean(0, 0.5) — the hole at 1 is skipped, not zeroed
-  assert.equal(s[3], 0.25) // mean(0, 0.5) — no wrap-around past the edge
-})
-
 test("bucketing separates refusals and errors from wrong answers", () => {
   const answers: QuizAnswer[] = [
     { item_id: "a", month: "2025-01", picked: 0, correct: true },
@@ -216,4 +207,82 @@ test("option order is deterministic per item id", () => {
 test("month range is inclusive and ordered", () => {
   assert.deepEqual(monthRange("2025-11", "2026-02"), ["2025-11", "2025-12", "2026-01", "2026-02"])
   assert.deepEqual(monthRange("2026-02", "2025-11"), [])
+})
+
+test("an empty bank is structurally valid but not loadable", async () => {
+  // `cutoff:build` validates after every month it writes, and the first
+  // month can legitimately yield nothing. Failing validation there aborted
+  // the whole build — after paying for the calls.
+  const { validateBank, loadQuizBank, QuizBankError } = await import("./cutoff-quiz.ts")
+  const empty = {
+    version: "t",
+    built_at: "2026-08-31T00:00:00Z",
+    builder_model: "m",
+    n_options: 8,
+    months: [],
+    events: [],
+  }
+  assert.doesNotThrow(() => validateBank(empty))
+
+  const { mkdtempSync, writeFileSync } = await import("node:fs")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const path = join(mkdtempSync(join(tmpdir(), "quiz-")), "bank.json")
+  writeFileSync(path, JSON.stringify(empty))
+  assert.throws(() => loadQuizBank(path), (e: unknown) => {
+    assert.ok(e instanceof QuizBankError)
+    assert.match((e as Error).message, /no events/)
+    return true
+  })
+})
+
+test("assembled items use only real events, from far-enough months", async () => {
+  // The property the whole measurement rests on. Fabricated wrong answers
+  // are detectable without knowing the date, however they are written:
+  // gpt-4.1-mini (cutoff 2024-06) scored 40% on invented entity names and
+  // 72% on real entities in false claims, against 12.5% chance. Drawing
+  // the wrong answers from other months' REAL events put it at 6%.
+  const { assembleItems } = await import("./cutoff-quiz.ts")
+  const events = monthRange("2023-01", "2025-12").flatMap((month, i) =>
+    ["politics", "science"].map((domain) => ({
+      id: `${month}-${domain}`,
+      month,
+      domain,
+      statement: `event ${i} ${domain} in ${month}`,
+    }))
+  )
+  const items = assembleItems(events, { nOptions: 8, minMonthGap: 9 })
+  assert.ok(items.length > 0)
+
+  const byStatement = new Map(events.map((e) => [e.statement, e]))
+  for (const item of items) {
+    assert.equal(item.options.length, 8)
+    assert.equal(new Set(item.options).size, 8, "no option may repeat")
+    for (const [i, opt] of item.options.entries()) {
+      const source = byStatement.get(opt)
+      assert.ok(source, `every option must be a real event: ${opt}`)
+      if (i === item.answer) {
+        assert.equal(source.month, item.month, "the answer is this month's event")
+      } else {
+        const gap = Math.abs(monthOrdinal(source.month) - monthOrdinal(item.month))
+        assert.ok(gap >= 9, `wrong answers must be >= 9 months away, got ${gap}`)
+      }
+    }
+  }
+
+  // Same pool, same quiz — models must face identical questions.
+  const again = assembleItems(events, { nOptions: 8, minMonthGap: 9 })
+  assert.deepEqual(items, again)
+})
+
+test("assembly skips items the pool is too thin to build", async () => {
+  const { assembleItems } = await import("./cutoff-quiz.ts")
+  const events = ["2024-01", "2024-02"].map((month) => ({
+    id: month,
+    month,
+    domain: "politics",
+    statement: `event in ${month}`,
+  }))
+  // Two events a month apart cannot fill an 8-way item at a 9-month gap.
+  assert.deepEqual(assembleItems(events, { nOptions: 8, minMonthGap: 9 }), [])
 })

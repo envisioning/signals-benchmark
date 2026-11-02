@@ -12,19 +12,36 @@
  *   pnpm cutoff:build --from 2023-01                 (to = last complete month)
  *   pnpm cutoff:build --from 2023-01 --per-month 6
  *   pnpm cutoff:build --no-verify                    (half the cost, more noise)
+ *   pnpm cutoff:build --verifier <slug>              (default: gemini flash, grounded)
+ *   pnpm cutoff:build --max-tokens 24000             (if a model reports truncation)
+ *   pnpm cutoff:build --top-up 4                     (revisit months holding < 4 items)
  *   pnpm cutoff:build --rebuild                      (ignore the existing bank)
  *   pnpm cutoff:build --dry-run
  *
+ * Each month is drafted, filtered, verified and WRITTEN before the next
+ * one finishes — the bank on disk is always valid and always complete up
+ * to whatever has landed. That matters because a full window is a long
+ * run against web-grounded models: interrupt it and you keep every month
+ * you already paid for.
+ *
  * Default behaviour is APPEND: months already in data/cutoff-quiz.json
  * are left untouched and only missing months are drafted. That's what
- * makes the quarterly "extend the tail" refresh cheap, and it keeps old
- * buckets byte-identical so previously published curves stay valid.
+ * makes both the quarterly "extend the tail" refresh and resuming an
+ * interrupted build free, and it keeps old buckets byte-identical so
+ * previously published curves stay valid.
  *
  * Cost: roughly $0.03-0.06 per item with verification on. A 36-month
- * window at 5 items/month lands around $6-10 as a one-off; extending
- * the tail by a quarter costs well under a dollar.
+ * window at 5 items/month lands around $6-10 and 20-40 minutes as a
+ * one-off; extending the tail by a quarter costs well under a dollar.
+ * Run it in chunks (`--from`/`--to`) if you'd rather not sit through it.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname, resolve } from "node:path"
 import pc from "picocolors"
 import { loadEnv, requireKey } from "./env.ts"
@@ -37,14 +54,21 @@ import {
   monthLabel,
   monthOrdinal,
   monthRange,
+  assembleItems,
+  auditBank,
   shuffleOptions,
   validateBank,
   type QuizBank,
-  type QuizItem,
 } from "./cutoff-quiz.ts"
 
 const DEFAULT_BUILDER = "openai/gpt-5.4:online"
-const DEFAULT_VERIFIER = "google/gemini-2.5-pro:online"
+/**
+ * Grounded, cheap, and reliable at short JSON — the same reasoning
+ * behind the eval pipeline's default judge. Gemini 2.5 *Pro* reasons
+ * internally and spends 1.5k+ tokens before the first visible character,
+ * which costs 5x more per item for a two-boolean answer.
+ */
+const DEFAULT_VERIFIER = "google/gemini-2.5-flash:online"
 const DEFAULT_PER_MONTH = 5
 const DEFAULT_N_OPTIONS = 8
 
@@ -66,97 +90,92 @@ const DRAFT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    items: {
+    events: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          fact: { type: "string" },
-          distractors: { type: "array", items: { type: "string" } },
+          statement: { type: "string" },
           domain: { type: "string" },
           source_url: { type: "string" },
           source_title: { type: "string" },
         },
-        required: ["fact", "distractors", "domain", "source_url", "source_title"],
+        required: ["statement", "domain", "source_url", "source_title"],
       },
     },
   },
-  required: ["items"],
+  required: ["events"],
 }
 
 const VERIFY_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    fact_confirmed: { type: "boolean" },
-    any_distractor_real: { type: "boolean" },
+    confirmed: { type: "boolean" },
     reason: { type: "string" },
   },
-  required: ["fact_confirmed", "any_distractor_real", "reason"],
+  required: ["confirmed", "reason"],
 }
 
-type DraftItem = {
-  fact: string
-  distractors: string[]
+type DraftEvent = {
+  statement: string
   domain: string
   source_url: string
   source_title: string
 }
 
-function draftPrompt(month: string, count: number, nOptions: number): string {
+function draftPrompt(
+  month: string,
+  count: number,
+  avoid: string[] = []
+): string {
   const domains = DOMAINS.slice(0, count).join("; ")
+  const exclusion =
+    avoid.length === 0
+      ? ""
+      : `\nThe bank already covers these events for this month — pick DIFFERENT ones:\n${avoid
+          .map((a) => `  - ${a}`)
+          .join("\n")}\n`
   return `Search the web for notable events from ${monthLabel(month)}.
+${exclusion}
+Produce ${count} statements, each describing a DIFFERENT thing that actually
+happened in ${monthLabel(month)}.
 
-Produce ${count} quiz items. Each item is one TRUE statement about something that
-actually happened in ${monthLabel(month)}, plus ${nOptions - 1} FALSE statements.
+Spread them across these domains, one each where possible: ${domains}.
 
-Spread the items across these domains, one each where possible: ${domains}.
-
-Rules for the TRUE statement:
-- It must be well documented — the kind of event a Wikipedia "${monthLabel(month)}" or
-  "${month.slice(0, 4)} in review" page records. Give the source URL you used.
+Rules:
+- Each must be well documented — the kind of event a Wikipedia
+  "${monthLabel(month)}" or "${month.slice(0, 4)} in review" page records. Give the
+  source URL you used for each.
 - It must have happened in ${monthLabel(month)}, not the month before or after.
 - Prefer outcomes that could NOT have been confidently predicted a year earlier.
-  The result of a scheduled event is good; the fact that a scheduled event was
-  scheduled is not.
-
-Rules for the FALSE statements:
-- Plausible but untrue. They must not describe anything that really happened at
-  any time, in any month — a distractor that is real elsewhere in the timeline
-  makes the item unscoreable.
-- Same domain, same register, same level of detail as the true one.
-
-Rules for ALL ${nOptions} statements in an item:
+  The result of a scheduled event is good; the fact that one was scheduled is not.
 - 15-25 words. Declarative. Named actors and concrete specifics in every one.
-- NEVER mention a month name, a year, or a relative date ("last week"). The
-  reader is told the month separately; a date inside a statement gives it away.
-- No statement may hint at which one is true through length, hedging, or
-  vagueness. Written down, the ${nOptions} should be indistinguishable to someone
-  who does not know what happened.
+- NEVER mention a month name, a year, or a relative date ("last week"). The quiz
+  asks the reader WHICH MONTH this happened in — a date in the text gives it away.
+- Write them all to one standard. Every statement becomes a wrong answer in other
+  months' questions, so a statement that reads differently from the rest is a tell
+  wherever it appears.
 
 Respond ONLY with JSON:
-{"items":[{"fact":"...","distractors":["...", "..."],"domain":"...","source_url":"https://...","source_title":"..."}]}
-Each item needs exactly ${nOptions - 1} distractors.`
+{"events":[{"statement":"...","domain":"...","source_url":"https://...","source_title":"..."}]}`
 }
 
-function verifyPrompt(month: string, item: DraftItem): string {
-  return `Check a quiz item about ${monthLabel(month)} using web search.
+function verifyPrompt(month: string, event: DraftEvent): string {
+  return `Check one statement using web search.
 
-Statement claimed TRUE for ${monthLabel(month)}:
-  ${item.fact}
+Statement, claimed to describe something that happened in ${monthLabel(month)}:
+  ${event.statement}
 
-Statements claimed FALSE (should describe nothing that ever happened):
-${item.distractors.map((d, i) => `  ${i + 1}. ${d}`).join("\n")}
-
-Answer two questions:
-1. fact_confirmed — did the true statement really happen, and in ${monthLabel(month)}?
-   Answer false if it happened in a different month, or you cannot confirm it.
-2. any_distractor_real — does ANY of the false statements describe a real event
-   (at any date), or a real event with only cosmetic details changed?
+Answer:
+1. confirmed — did this really happen, and in ${monthLabel(month)}? Answer false if
+   it happened in a different month, or if you cannot confirm it. The month matters:
+   this statement becomes a wrong answer in other months' questions, so a wrong date
+   corrupts the quiz in both directions.
 
 Respond ONLY with JSON:
-{"fact_confirmed":true,"any_distractor_real":false,"reason":"one sentence"}`
+{"confirmed":true,"reason":"one sentence"}`
 }
 
 // ── Local quality gates (free — run before spending on verification) ──
@@ -165,29 +184,17 @@ const DATE_LEAK_RE =
   /\b(19|20)\d{2}\b|\b(january|february|march|april|may|june|july|august|september|october|november|december)\b|\b(last|next|this)\s+(week|month|year)\b/i
 
 /**
- * Reject items whose true statement is identifiable without knowing the
- * answer. Two tells matter in practice: a date inside a statement, and a
- * true statement conspicuously longer or shorter than its distractors
- * (models write the real one with more detail). Both would inflate every
- * model's plateau accuracy and push the estimated cutoff later.
+ * Reject events that would give their own month away, or that can't be
+ * audited later. Length is no longer policed here: every option in a
+ * finished item is one of these statements, written to the same brief, so
+ * there is no "real one reads differently" tell left to gate against.
+ * auditBank still measures it on the assembled quiz.
  */
-function localReject(item: DraftItem, nOptions: number): string | null {
-  if (!item.fact?.trim()) return "empty fact"
-  if (!Array.isArray(item.distractors) || item.distractors.length !== nOptions - 1) {
-    return `expected ${nOptions - 1} distractors, got ${item.distractors?.length ?? 0}`
-  }
-  const all = [item.fact, ...item.distractors].map((s) => s.trim())
-  if (all.some((s) => !s)) return "empty option"
-  if (new Set(all.map((s) => s.toLowerCase())).size !== all.length) return "duplicate options"
-  for (const s of all) {
-    const leak = s.match(DATE_LEAK_RE)
-    if (leak) return `date leak in option: "${leak[0]}"`
-  }
-  const lens = item.distractors.map((d) => d.trim().length).sort((a, b) => a - b)
-  const median = lens[Math.floor(lens.length / 2)]
-  const ratio = item.fact.trim().length / Math.max(1, median)
-  if (ratio > 1.6 || ratio < 0.6) return `fact length outlier (${ratio.toFixed(2)}x median)`
-  if (!/^https?:\/\//.test(item.source_url ?? "")) return "missing source url"
+function localReject(event: DraftEvent): string | null {
+  if (!event?.statement?.trim()) return "empty statement"
+  const leak = event.statement.match(DATE_LEAK_RE)
+  if (leak) return `date leak: "${leak[0]}"`
+  if (!/^https?:\/\//.test(event.source_url ?? "")) return "missing source url"
   return null
 }
 
@@ -224,7 +231,14 @@ async function main() {
   const builder = (args.builder as string) ?? DEFAULT_BUILDER
   const verifier = (args.verifier as string) ?? DEFAULT_VERIFIER
   const verify = !args["no-verify"]
-  const concurrency = Number(args.concurrency ?? 4)
+  const concurrency = Number(args.concurrency ?? 6)
+  /**
+   * Generous by default. These are per-month one-off calls, and the
+   * failure mode of a low ceiling (truncated JSON, whole month lost,
+   * money already spent) is far worse than a few unused tokens — models
+   * are billed for what they emit, not for the ceiling.
+   */
+  const maxTokens = Number(args["max-tokens"] ?? 16_000)
   const to = (args.to as string) ?? lastCompleteMonth()
   const from = (args.from as string) ?? defaultFrom(to)
 
@@ -254,8 +268,20 @@ async function main() {
   }
 
   const allMonths = monthRange(from, to)
-  const have = new Set(existing?.items.map((it) => it.month) ?? [])
-  const todo = allMonths.filter((m) => !have.has(m))
+  const have = new Set(existing?.events.map((e) => e.month) ?? [])
+  const countFor = (m: string) =>
+    existing?.events.filter((e) => e.month === m).length ?? 0
+  /**
+   * --top-up <n> revisits months that came back THIN rather than only
+   * months that are missing. Selection is strict enough that a month can
+   * land with one or two items, and a bucket that small makes accuracy
+   * quantised (0/50/100%) — noise the curve then has to be smoothed
+   * through. Without this, topping up meant hand-editing the bank.
+   */
+  const topUpTo = args["top-up"] ? Number(args["top-up"]) : 0
+  const todo = allMonths.filter((m) =>
+    topUpTo > 0 ? countFor(m) < topUpTo : !have.has(m)
+  )
 
   const version =
     (args.version as string) ??
@@ -264,10 +290,16 @@ async function main() {
 
   console.log(pc.bold(pc.cyan("\ncutoff:build")))
   console.log(pc.dim(`  window:    ${from} … ${to} (${allMonths.length} months)`))
-  console.log(pc.dim(`  to draft:  ${todo.length} months × ${perMonth} items`))
+  console.log(
+    pc.dim(
+      topUpTo > 0
+        ? `  to top up: ${todo.length} months holding < ${topUpTo} items`
+        : `  to draft:  ${todo.length} months × ${perMonth} items`
+    )
+  )
   if (existing) {
     console.log(
-      pc.dim(`  existing:  ${existing.items.length} items across ${have.size} months (kept)`)
+      pc.dim(`  existing:  ${existing.events.length} events across ${have.size} months (kept)`)
     )
   }
   console.log(pc.dim(`  builder:   ${builder}`))
@@ -285,144 +317,217 @@ async function main() {
 
   const usageAtStart = await getKeyUsage(apiKey)
   const { default: pMap } = await import("p-map")
+  const startedAt = Date.now()
 
-  const drafted: { month: string; item: DraftItem }[] = []
-  let done = 0
-  await pMap(
-    todo,
-    async (month) => {
-      const res = await openrouterChat({
-        apiKey,
-        model: builder,
-        messages: [{ role: "user", content: draftPrompt(month, perMonth, nOptions) }],
-        responseFormat: {
-          type: "json_schema",
-          json_schema: { name: "quiz_items", strict: true, schema: DRAFT_SCHEMA },
-        },
-        temperature: 0.4,
-        maxTokens: 8000,
-        webSearch: true,
-        timeoutMs: 300_000,
-      })
-      done++
-      if (!res.success) {
-        console.log(`  [${done}/${todo.length}] ${month} — ${pc.red(res.message.slice(0, 70))}`)
-        return
-      }
-      let items: DraftItem[] = []
-      try {
-        items = (extractJson(res.text)?.items ?? []) as DraftItem[]
-      } catch {
-        console.log(`  [${done}/${todo.length}] ${month} — ${pc.red("unparseable draft")}`)
-        return
-      }
-      let kept = 0
-      for (const item of items) {
-        const why = localReject(item, nOptions)
-        if (why) {
-          console.log(pc.dim(`      drop ${month}: ${why}`))
-          continue
-        }
-        drafted.push({ month, item })
-        kept++
-      }
-      console.log(
-        `  [${done}/${todo.length}] ${month} — ${pc.green(`${kept} drafted`)}${
-          kept < items.length ? pc.dim(` (${items.length - kept} rejected locally)`) : ""
-        }`
-      )
-    },
-    { concurrency }
-  )
-
-  let accepted = drafted
-  if (verify && drafted.length > 0) {
-    console.log(pc.bold(`\nVerifying ${drafted.length} items with ${verifier}`))
-    let vdone = 0
-    const verdicts = await pMap(
-      drafted,
-      async (d) => {
-        const res = await openrouterChat({
-          apiKey,
-          model: verifier,
-          messages: [{ role: "user", content: verifyPrompt(d.month, d.item) }],
-          responseFormat: {
-            type: "json_schema",
-            json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
-          },
-          temperature: 0,
-          maxTokens: 1500,
-          webSearch: true,
-          timeoutMs: 300_000,
-        })
-        vdone++
-        if (!res.success) return { d, ok: false, reason: `verifier error: ${res.message}` }
-        try {
-          const v = extractJson(res.text)
-          const ok = v?.fact_confirmed === true && v?.any_distractor_real === false
-          return { d, ok, reason: String(v?.reason ?? "") }
-        } catch {
-          return { d, ok: false, reason: "unparseable verdict" }
-        }
+  /**
+   * Draft, filter and verify ONE month, and return the items that
+   * survived. Deliberately month-atomic: the caller writes each month's
+   * result to disk as it lands, so an interrupted build keeps every
+   * month it already paid for and re-running resumes from there. An
+   * earlier version drafted everything, then verified everything, then
+   * wrote once at the end — a 40-minute run that lost the lot on Ctrl-C.
+   */
+  async function buildMonth(
+    month: string,
+    want: number,
+    avoid: string[]
+  ): Promise<{
+    events: DraftEvent[]
+    drafted: number
+    localDrops: number
+    verifyDrops: number
+    error?: string
+  }> {
+    const res = await askJson({
+      apiKey,
+      model: builder,
+      messages: [{ role: "user", content: draftPrompt(month, want, avoid) }],
+      responseFormat: {
+        type: "json_schema",
+        json_schema: { name: "events", strict: true, schema: DRAFT_SCHEMA },
       },
-      { concurrency }
-    )
-    const rejected = verdicts.filter((v) => !v.ok)
-    for (const r of rejected) {
-      console.log(pc.dim(`      drop ${r.d.month}: ${r.reason.slice(0, 90)}`))
+      temperature: 0.4,
+      maxTokens,
+      webSearch: true,
+      timeoutMs: 150_000,
+    })
+    if (!res.ok) {
+      return { events: [], drafted: 0, localDrops: 0, verifyDrops: 0, error: res.error }
     }
-    accepted = verdicts.filter((v) => v.ok).map((v) => v.d)
-    console.log(
-      pc.dim(`  verified ${accepted.length}/${drafted.length} (${rejected.length} dropped)`)
-    )
+    const raw = (res.value?.events ?? []) as DraftEvent[]
+
+    // Free gates first — never pay a verifier to look at a statement we
+    // can already tell is unusable.
+    const passed: DraftEvent[] = []
+    for (const event of raw) {
+      const why = localReject(event)
+      if (why) {
+        console.log(pc.dim(`      drop ${month}: ${why}`))
+        continue
+      }
+      passed.push(event)
+    }
+
+    let accepted = passed
+    let verifyDrops = 0
+    if (verify && passed.length > 0) {
+      const verdicts = await pMap(
+        passed,
+        async (event) => {
+          const v = await askJson({
+            apiKey,
+            model: verifier,
+            messages: [{ role: "user", content: verifyPrompt(month, event) }],
+            responseFormat: {
+              type: "json_schema",
+              json_schema: { name: "verdict", strict: true, schema: VERIFY_SCHEMA },
+            },
+            temperature: 0,
+            maxTokens,
+            webSearch: true,
+            timeoutMs: 150_000,
+          })
+          if (!v.ok) return { event, ok: false, reason: `verifier: ${v.error}` }
+          return {
+            event,
+            ok: v.value?.confirmed === true,
+            reason: String(v.value?.reason ?? ""),
+          }
+        },
+        { concurrency: Math.min(want, 5) }
+      )
+      for (const v of verdicts) {
+        if (!v.ok) console.log(pc.dim(`      drop ${month}: ${v.reason.slice(0, 90)}`))
+      }
+      accepted = verdicts.filter((v) => v.ok).map((v) => v.event)
+      verifyDrops = verdicts.length - accepted.length
+    }
+
+    return {
+      events: accepted,
+      drafted: raw.length,
+      localDrops: raw.length - passed.length,
+      verifyDrops,
+    }
   }
 
-  const newItems: QuizItem[] = accepted.map(({ month, item }, i) => {
-    const id = `${month}-${String(i).padStart(3, "0")}-${slug(item.fact)}`
-    const { options, answer } = shuffleOptions(id, item.fact.trim(), item.distractors.map((d) => d.trim()))
-    return {
-      id,
-      month,
-      domain: item.domain,
-      options,
-      answer,
-      source: { url: item.source_url, title: item.source_title },
-    }
-  })
-
-  const items = [...(existing?.items ?? []), ...newItems].sort(
-    (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
-  )
+  // Accumulating bank, flushed after every month.
   const bank: QuizBank = {
     version,
     built_at: new Date().toISOString(),
     builder_model: builder,
     ...(verify ? { verifier_model: verifier } : {}),
     n_options: nOptions,
-    months: [...new Set(items.map((it) => it.month))].sort(
-      (a, b) => monthOrdinal(a) - monthOrdinal(b)
-    ),
-    items,
+    months: [...have].sort((a, b) => monthOrdinal(a) - monthOrdinal(b)),
+    events: [...(existing?.events ?? [])],
   }
-  validateBank(bank)
 
-  mkdirSync(dirname(outPath), { recursive: true })
-  writeFileSync(outPath, JSON.stringify(bank, null, 2))
+  // Months run concurrently, so serialise the read-modify-write.
+  let flushing: Promise<void> = Promise.resolve()
+  /**
+   * Ids are assigned HERE rather than in buildMonth, because their index
+   * has to be relative to what the bank already holds for that month. A
+   * top-up that restarted numbering at 0 would collide with the existing
+   * items and fail validation — inside the flush, i.e. after the calls
+   * were paid for.
+   */
+  function flush(month: string, drafts: DraftEvent[]): Promise<void> {
+    flushing = flushing.then(() => {
+      const offset = bank.events.filter((e) => e.month === month).length
+      const seen = new Set(bank.events.map((e) => e.statement.trim().toLowerCase()))
+      const fresh = drafts.filter((d) => !seen.has(d.statement.trim().toLowerCase()))
+      bank.events.push(
+        ...fresh.map((d, i) => ({
+          id: `${month}-${String(offset + i).padStart(2, "0")}-${slug(d.statement)}`,
+          month,
+          domain: d.domain,
+          statement: d.statement.trim(),
+          source: { url: d.source_url, title: d.source_title },
+        }))
+      )
+      bank.events.sort(
+        (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month) || a.id.localeCompare(b.id)
+      )
+      bank.months = [...new Set(bank.events.map((e) => e.month))].sort(
+        (a, b) => monthOrdinal(a) - monthOrdinal(b)
+      )
+      bank.built_at = new Date().toISOString()
+      validateBank(bank)
+      mkdirSync(dirname(outPath), { recursive: true })
+      // Write-then-rename so an interrupt can't leave a half-written file.
+      const tmp = `${outPath}.tmp`
+      writeFileSync(tmp, JSON.stringify(bank, null, 2))
+      renameSync(tmp, outPath)
+    })
+    return flushing
+  }
 
+  let done = 0
+  let failed = 0
+  await pMap(
+    todo,
+    async (month) => {
+      const held = bank.events.filter((e) => e.month === month)
+      const want = topUpTo > 0 ? Math.max(1, topUpTo - held.length) : perMonth
+      // Show the builder what this month already has so a top-up gets
+      // new events rather than paraphrases of the ones we banked.
+      const avoid = held.map((e) => e.statement)
+      const r = await buildMonth(month, want, avoid)
+      // A month that yielded nothing leaves the file alone — no point
+      // rewriting the bank to bump its timestamp.
+      if (r.events.length > 0) await flush(month, r.events)
+      done++
+      const elapsed = (Date.now() - startedAt) / 1000
+      const eta = done === 0 ? 0 : (elapsed / done) * (todo.length - done)
+      const status = r.error
+        ? pc.red(`✗ ${r.error.slice(0, 60)}`)
+        : pc.green(`${r.events.length} kept`) +
+          (r.localDrops + r.verifyDrops > 0
+            ? pc.dim(` (${r.localDrops + r.verifyDrops} dropped)`)
+            : "")
+      if (r.error) failed++
+      console.log(
+        `  [${done}/${todo.length}] ${month} — ${status}` +
+          pc.dim(
+            ` · ${bank.events.length} events banked · ${fmtDuration(eta)} left${await billedSoFar()}`
+          )
+      )
+    },
+    { concurrency }
+  )
+
+  const assembled = assembleItems(bank.events, { nOptions })
+  const audit = auditBank(bank, assembled)
   const thin = bank.months.filter(
-    (m) => items.filter((it) => it.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
+    (m) => bank.events.filter((e) => e.month === m).length < Math.max(2, Math.ceil(perMonth / 2))
   )
   console.log()
   console.log(pc.green(`✓ Wrote ${outPath}`))
   console.log(
-    pc.dim(`  ${bank.items.length} items · ${bank.months.length} months · ${nOptions}-way · version ${version}`)
+    pc.dim(
+      `  ${bank.events.length} events · ${bank.months.length} months · ${nOptions}-way · version ${version}`
+    )
   )
+  if (failed > 0) {
+    console.log(
+      pc.yellow(`  ${failed} month(s) failed outright — re-run to retry just those.`)
+    )
+  }
   if (thin.length > 0) {
     console.log(
       pc.yellow(
-        `  Thin months (re-run to top up): ${thin.join(", ")}`
+        `  Thin months (delete them from the bank and re-run to top up): ${thin.join(", ")}`
       )
     )
+  }
+  console.log(
+    pc.dim(
+      `  audit: true answer is shortest in ${Math.round(audit.shortest_rate * 100)}% of items, ` +
+        `longest in ${Math.round(audit.longest_rate * 100)}% (chance ${Math.round((100 / nOptions))}%)`
+    )
+  )
+  for (const w of audit.warnings) {
+    console.log(pc.yellow(`  ⚠ ${w}`))
   }
   const usageAtEnd = await getKeyUsage(apiKey)
   if (usageAtStart !== null && usageAtEnd !== null) {
@@ -433,6 +538,60 @@ async function main() {
   console.log("  Skim the bank — the true answers should not stand out.")
   console.log("  git add data/cutoff-quiz.json && git commit -m \"cutoff: quiz bank\"")
   console.log("  pnpm cutoff")
+
+  /** Running total billed on this key since the build started. */
+  async function billedSoFar(): Promise<string> {
+    if (usageAtStart === null) return ""
+    const now = await getKeyUsage(apiKey)
+    if (now === null) return ""
+    return ` · $${Math.max(0, now - usageAtStart).toFixed(2)}`
+  }
+}
+
+/**
+ * One grounded call that must come back as JSON.
+ *
+ * Retries once on failure, because grounded calls fail transiently often
+ * enough (rate limits, upstream search timeouts) that losing a whole
+ * month to one blip costs more than the extra call.
+ *
+ * Truncation is treated as a failure and retried, not passed to the
+ * parser. Several capable models reason internally before writing a
+ * single visible character: gemini-2.5-pro spent 1,436 tokens thinking
+ * about a two-boolean verdict and got cut off mid-string, which reaches
+ * the parser as "unparseable" and looks like a model quality problem
+ * rather than a ceiling that is too low. Checking finish_reason names
+ * the real fault.
+ */
+async function askJson(
+  opts: Parameters<typeof openrouterChat>[0]
+): Promise<{ ok: true; value: any } | { ok: false; error: string }> {
+  let lastError = "unknown"
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000))
+    const res = await openrouterChat(opts)
+    if (!res.success) {
+      lastError = res.message
+      continue
+    }
+    if (res.raw?.choices?.[0]?.finish_reason === "length") {
+      lastError = `response truncated at ${opts.maxTokens} tokens (raise --max-tokens, or use a model that reasons less)`
+      continue
+    }
+    try {
+      return { ok: true, value: extractJson(res.text) }
+    } catch {
+      lastError = `unparseable JSON: ${res.text.slice(0, 120)}`
+    }
+  }
+  return { ok: false, error: lastError }
+}
+
+function fmtDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m"
+  const m = Math.round(seconds / 60)
+  if (m < 60) return `${m}m`
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}m`
 }
 
 /** 36 months back — long enough to see a plateau before any current cutoff. */
@@ -452,4 +611,7 @@ function slug(s: string): string {
     .join("-")
 }
 
-await main()
+// Importing this module for its helpers (tests) must not kick off a build.
+if (process.argv[1]?.endsWith("build-quiz.ts")) {
+  await main()
+}

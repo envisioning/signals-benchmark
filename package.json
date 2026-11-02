@@ -1,6 +1,7 @@
 {
   "name": "@envisioning/signals-benchmark",
   "version": "0.1.0",
+  "packageManager": "pnpm@11.24.0",
   "description": "Benchmark LLMs on their ability to generate good 'signals of change' — multi-sector briefs, web-grounded verification, four-axis scoring, ranked leaderboard.",
   "license": "MIT",
   "type": "module",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "turbo": "^2.10.12",
     "typescript": "^5.6.3"
   }
 }

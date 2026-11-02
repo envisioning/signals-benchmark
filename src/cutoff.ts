@@ -64,21 +64,34 @@ export type QuizBucket = {
 export type CutoffEstimate = {
   /** Best single-month estimate, "YYYY-MM". */
   month: string
-  /** Interpolated day inside that month — the curve's midpoint crossing. */
+  /** First day of `month` — buckets are monthly, so this is not finer. */
   date: string
-  /** Bracketing buckets the crossing falls between. */
+  /** Range of splits that fit nearly as well as the best one. */
   lower: string
   upper: string
-  /** Mean accuracy over the plateau window, 0..1. */
+  /** Fitted accuracy before the change point, 0..1. */
   plateau: number
   /** 1 / n_options. */
   chance: number
-  /** Midpoint between plateau and chance — where we call the cutoff. */
+  /**
+   * Accuracy the curve actually decays to, from the newest buckets.
+   * Above `chance` when the quiz leaks recognisable-but-undated signal.
+   */
+  floor: number
+  /** Midpoint between the two fitted levels. */
   threshold: number
 }
 
 export type QuizProbe = {
   n_options: number
+  /**
+   * Set when the per-model cost cap stopped the probe early. The
+   * remaining questions were never asked, so the curve is partial and
+   * any estimate off it should be read as provisional.
+   */
+  cost_capped?: boolean
+  /** Measured cost of the first question, used for the projection below. */
+  first_call_usd?: number
   buckets: QuizBucket[]
   n_questions: number
   n_answered: number
@@ -92,6 +105,8 @@ export type QuizProbe = {
 
 export type EstimateFailure =
   | "too-few-buckets"
+  | "too-many-failures"
+  | "too-expensive"
   | "no-signal"
   | "no-decline-in-window"
   | "below-threshold-throughout"
@@ -127,6 +142,16 @@ export type IdentityProbe = {
 export type ModelCutoff = {
   model: string
   probed_at: string
+  /**
+   * Which bank, and which distractor gap, this model actually answered.
+   * Recorded per model rather than per run because models are added to a
+   * report over time — a new model probed after the bank grew has not sat
+   * the same exam as the others, and comparing them would be wrong.
+   */
+  quiz_version: string
+  /** Fingerprint of the event pool — the label alone survives an append. */
+  quiz_hash: string
+  month_gap: number
   quiz: QuizProbe
   self_report?: SelfReportProbe
   identity?: IdentityProbe
@@ -150,48 +175,71 @@ export type CutoffReport = {
 // ── Estimator (pure — unit-tested in cutoff.test.ts) ──────────────────
 
 export const ESTIMATOR_DEFAULTS = {
-  /** Buckets averaged at the old end of the window to find the plateau. */
-  plateauWindow: 6,
-  /** Centered moving-average width. 1 disables smoothing. */
-  smoothing: 3,
-  /** Plateau must clear chance by this much for the curve to mean anything. */
+  /** Minimum buckets either side of the split, so a fit needs real support. */
+  minSegment: 3,
+  /** Fewer scored buckets than this and we don't try at all. */
+  minBuckets: 8,
+  /** The drop across the split must clear this to count as a decline. */
   minSignal: 0.15,
   /** Buckets below this many scored questions are dropped from the curve. */
   minBucketN: 2,
+  /** Splits within this fraction of the best fit form the reported bracket. */
+  bracketTolerance: 0.05,
 } as const
 
+type Fit = { index: number; sse: number; left: number; right: number }
+
+function weightedMean(values: number[], weights: number[]): number {
+  const w = weights.reduce((a, b) => a + b, 0)
+  if (w === 0) return 0
+  return values.reduce((a, v, i) => a + v * weights[i], 0) / w
+}
+
 /**
- * Centered moving average over a series with holes (`null`). Holes stay
- * holes; the window shrinks at the edges rather than wrapping. Smoothing
- * matters because monthly buckets are small (4-8 questions) and a single
- * lucky guess swings a raw bucket by 12-25 points.
+ * Best single step through the curve: the split that minimises weighted
+ * squared error either side. Weights are the bucket sizes, so a month
+ * that only scored two questions pulls proportionally less than one that
+ * scored six.
  */
-export function smoothSeries(
-  values: (number | null)[],
-  width = ESTIMATOR_DEFAULTS.smoothing
-): (number | null)[] {
-  if (width <= 1) return [...values]
-  const half = Math.floor(width / 2)
-  return values.map((v, i) => {
-    if (v === null) return null
-    const window: number[] = []
-    for (let j = i - half; j <= i + half; j++) {
-      const x = values[j]
-      if (j >= 0 && j < values.length && x !== null) window.push(x)
-    }
-    return window.reduce((a, b) => a + b, 0) / window.length
-  })
+function fitStep(values: number[], weights: number[], minSegment: number): Fit[] {
+  const fits: Fit[] = []
+  for (let k = minSegment; k <= values.length - minSegment; k++) {
+    const lv = values.slice(0, k)
+    const lw = weights.slice(0, k)
+    const rv = values.slice(k)
+    const rw = weights.slice(k)
+    const left = weightedMean(lv, lw)
+    const right = weightedMean(rv, rw)
+    const sse =
+      lv.reduce((a, v, i) => a + lw[i] * (v - left) ** 2, 0) +
+      rv.reduce((a, v, i) => a + rw[i] * (v - right) ** 2, 0)
+    fits.push({ index: k, sse, left, right })
+  }
+  return fits
 }
 
 /**
  * Read a cutoff off the accuracy curve.
  *
- * The curve runs high (the model knows this month) and falls to chance
- * (it's guessing). We take the *midpoint* of that fall, not its start or
- * end — the same choice the source method makes, and for the same two
- * reasons: models partially anticipate near-future events, and the last
- * few months before a cutoff are undersampled in training data, so
- * accuracy starts sagging before knowledge actually stops.
+ * The curve runs high while the model knows the month and drops once it
+ * doesn't. We locate that drop as a CHANGE POINT — the split minimising
+ * weighted squared error either side — rather than by walking the curve
+ * for a threshold crossing. Two reasons, both learned the expensive way
+ * on real data:
+ *
+ *   - The level after the drop is not chance. A quiz item leaks whenever
+ *     an option can be ruled out without knowing the month, and models
+ *     differ in how much they exploit that, so the floor is a property of
+ *     the measurement and has to be estimated, not assumed. gpt-4.1-mini
+ *     (documented cutoff 2024-06) answered 2025-2026 events at 54%
+ *     against 12.5% chance; a chance-anchored threshold dated it 2026-05.
+ *   - Monthly buckets are small, so single buckets swing wildly. A
+ *     crossing rule keys on individual points and latches onto late
+ *     noise; fitting two levels uses every bucket at once. On the same
+ *     data the change point lands at 2024-03 — three months early, which
+ *     is the direction the midpoint convention intends: training data
+ *     thins out before a cutoff and models partially anticipate what
+ *     comes next, so the observed drop precedes the true date.
  *
  * Returns null with a reason when the curve can't support an estimate —
  * an over-confident guess here would be worse than an honest gap.
@@ -204,83 +252,61 @@ export function estimateCutoff(
   const cfg = { ...ESTIMATOR_DEFAULTS, ...opts }
   const chance = 1 / nOptions
 
-  const ordered = [...buckets].sort(
-    (a, b) => monthOrdinal(a.month) - monthOrdinal(b.month)
-  )
-  const usable = ordered.map((b) =>
-    b.accuracy !== null && b.n >= cfg.minBucketN ? b.accuracy : null
-  )
-  const scored = usable.filter((v) => v !== null).length
-  if (scored < cfg.plateauWindow + 2) return { estimate: null, reason: "too-few-buckets" }
-
-  const smoothed = smoothSeries(usable, cfg.smoothing)
-
-  // Plateau: the oldest `plateauWindow` buckets that actually scored.
-  const plateauValues: number[] = []
-  for (const v of smoothed) {
-    if (v === null) continue
-    plateauValues.push(v)
-    if (plateauValues.length === cfg.plateauWindow) break
+  const scored = [...buckets]
+    .sort((a, b) => monthOrdinal(a.month) - monthOrdinal(b.month))
+    .filter(
+      (b): b is QuizBucket & { accuracy: number } =>
+        b.accuracy !== null && b.n >= cfg.minBucketN
+    )
+  if (
+    scored.length < cfg.minBuckets ||
+    scored.length < cfg.minSegment * 2 + 1
+  ) {
+    return { estimate: null, reason: "too-few-buckets" }
   }
-  const plateau = plateauValues.reduce((a, b) => a + b, 0) / plateauValues.length
 
+  const values = scored.map((b) => b.accuracy)
+  const weights = scored.map((b) => b.n)
+  const fits = fitStep(values, weights, cfg.minSegment)
+  if (fits.length === 0) return { estimate: null, reason: "too-few-buckets" }
+
+  const best = fits.reduce((a, b) => (b.sse < a.sse ? b : a))
+  const plateau = best.left
+  const floor = best.right
+
+  // Never meaningfully above chance anywhere: nothing to date. Checked
+  // against chance, because this is "the model never knew this material",
+  // distinct from "it still knows it" below.
   if (plateau - chance < cfg.minSignal) return { estimate: null, reason: "no-signal" }
-  const threshold = (plateau + chance) / 2
-
-  // Indices of buckets that scored, so we can walk the curve ignoring holes.
-  const idx = smoothed.map((v, i) => (v === null ? -1 : i)).filter((i) => i >= 0)
-  const last = idx[idx.length - 1]
-  if ((smoothed[last] as number) >= threshold) {
-    // Still above threshold at the newest bucket: the cutoff is at or
-    // after the end of the window. Widen the window, don't guess.
+  // Both levels high: the model is still answering well at the newest
+  // month tested, so its cutoff is at or beyond the window.
+  if (plateau - floor < cfg.minSignal) {
     return { estimate: null, reason: "no-decline-in-window" }
   }
 
-  // Walk backwards for the LAST above→below crossing. Taking the last
-  // one (rather than the first) keeps a mid-window dip — a month that
-  // simply produced hard questions — from being mistaken for the cutoff.
-  for (let k = idx.length - 1; k > 0; k--) {
-    const hi = idx[k - 1]
-    const lo = idx[k]
-    const a = smoothed[hi] as number
-    const b = smoothed[lo] as number
-    if (a >= threshold && b < threshold) {
-      const span = a - b
-      const frac = span === 0 ? 0.5 : (a - threshold) / span
-      const loOrd = monthOrdinal(ordered[hi].month)
-      const hiOrd = monthOrdinal(ordered[lo].month)
-      // Buckets are anchored at mid-month; interpolate between anchors.
-      const exact = loOrd + frac * (hiOrd - loOrd)
-      const month = ordinalToMonth(Math.round(exact))
-      return {
-        estimate: {
-          month,
-          date: ordinalFractionToDate(exact),
-          lower: ordered[hi].month,
-          upper: ordered[lo].month,
-          plateau: round3(plateau),
-          chance: round3(chance),
-          threshold: round3(threshold),
-        },
-      }
-    }
-  }
-  return { estimate: null, reason: "below-threshold-throughout" }
-}
+  // Bracket: every split that fits nearly as well. A wide bracket is
+  // itself the finding — it means the decline is gradual or the buckets
+  // are too noisy to place it precisely.
+  const near = fits.filter(
+    (f) => f.sse <= best.sse * (1 + cfg.bracketTolerance) && f.left > f.right
+  )
+  const indices = near.length > 0 ? near.map((f) => f.index) : [best.index]
+  const loIdx = Math.max(0, Math.min(...indices) - 1)
+  const hiIdx = Math.min(scored.length - 1, Math.max(...indices))
 
-/**
- * Fractional month ordinal → ISO date, anchoring each bucket at the
- * 15th. 24303.5 is mid-way between the 15th of one month and the 15th
- * of the next, i.e. roughly the 1st of the later month.
- */
-function ordinalFractionToDate(exact: number): string {
-  const base = Math.floor(exact)
-  const frac = exact - base
-  const [y, m] = ordinalToMonth(base).split("-").map(Number)
-  const start = Date.UTC(y, m - 1, 15)
-  const next = Date.UTC(y, m, 15)
-  const t = start + frac * (next - start)
-  return new Date(t).toISOString().slice(0, 10)
+  const month = scored[best.index].month
+  return {
+    estimate: {
+      month,
+      date: `${month}-01`,
+      lower: scored[loIdx].month,
+      upper: scored[hiIdx].month,
+      plateau: round3(plateau),
+      chance: round3(chance),
+      floor: round3(floor),
+      threshold: round3((plateau + floor) / 2),
+    },
+  }
 }
 
 function round3(n: number): number {
@@ -428,35 +454,92 @@ export function parseMonthAnswer(text: string): string | null {
 type ChatDeps = { apiKey: string; model: string; timeoutMs?: number }
 
 /**
- * Reasoning models burn output tokens before the visible answer, exactly
- * as in generation. These prompts want one letter, so the ceiling only
- * has to cover internal reasoning — but it has to cover it, or the
- * model returns an empty body and we score a refusal it never made.
+ * Starting token ceiling. Models that reason internally burn output
+ * tokens before the first visible character, and these prompts want one
+ * letter — so the ceiling has to cover thinking we can't see.
+ *
+ * The name-based guess is only a STARTING point. It is a heuristic over
+ * slugs and it silently fails on every model that reasons without saying
+ * so in its name: gemini-3.5-flash spent 382 tokens thinking against a
+ * 400 ceiling and returned the string `{"answer` on 169 of 215 questions,
+ * which scored as 169 refusals and left too few buckets to fit. The
+ * asker below detects that at runtime instead of trusting this.
  */
-function tokenCeiling(model: string): number {
+function startingCeiling(model: string): number {
   return isReasoningModel(model) ? 8000 : 400
 }
 
-async function askOnce(
-  { apiKey, model, timeoutMs }: ChatDeps,
-  prompt: string,
-  temperature: number
-) {
-  return openrouterChat({
-    apiKey,
-    model,
-    messages: [{ role: "user", content: prompt }],
-    responseFormat: {
-      type: "json_schema",
-      json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
-    },
-    temperature,
-    maxTokens: tokenCeiling(model),
-    reasoning: shouldPassReasoning(model)
-      ? { effort: "minimal", exclude: true }
-      : undefined,
-    timeoutMs: timeoutMs ?? (isReasoningModel(model) ? 180_000 : 90_000),
-  })
+/**
+ * Thrown when the failure is the key, not the model. Grinding through
+ * 21 models x 215 questions against an exhausted budget produced 4,500
+ * guaranteed failures, twenty minutes of progress bars, and a results
+ * table reading "too-many-failures" for every model — which looks like a
+ * finding about the models. It isn't.
+ */
+export class FatalProbeError extends Error {}
+
+const FATAL_CODES = new Set([401, 402, 403])
+
+/** Cut off by the ceiling rather than finished. */
+function wasTruncated(res: Awaited<ReturnType<typeof openrouterChat>>): boolean {
+  return res.success && res.raw?.choices?.[0]?.finish_reason === "length"
+}
+
+/**
+ * Per-model asker with an adaptive token ceiling.
+ *
+ * On the first truncation it raises the ceiling and retries, and keeps
+ * the raised ceiling for every later call to that model — so a cohort
+ * run pays for one extra call to discover a model reasons, not 215 of
+ * them. A response still truncated after the retry is reported as an
+ * error rather than a refusal: the model answered, we failed to let it.
+ */
+function makeAsker({ apiKey, model, timeoutMs }: ChatDeps) {
+  let ceiling = startingCeiling(model)
+  return async function ask(prompt: string, temperature: number) {
+    let lastFailure: Awaited<ReturnType<typeof openrouterChat>> | null = null
+    // Two escalation attempts (truncation) x three tries (transient
+    // failure). A cohort run drives 12 calls in flight against one key,
+    // and a rate limit or provider blip with no retry silently becomes a
+    // hole in the curve: deepseek-v4-pro came back with 158 errors out of
+    // 215 questions and still produced a confident-looking estimate.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      for (let tries = 0; tries < 3; tries++) {
+        if (tries > 0) await new Promise((r) => setTimeout(r, tries * 3000))
+        const res = await openrouterChat({
+          apiKey,
+          model,
+          messages: [{ role: "user", content: prompt }],
+          responseFormat: {
+            type: "json_schema",
+            json_schema: { name: "answer", strict: true, schema: ANSWER_SCHEMA as any },
+          },
+          temperature,
+          maxTokens: ceiling,
+          reasoning: shouldPassReasoning(model)
+            ? { effort: "minimal", exclude: true }
+            : undefined,
+          timeoutMs: timeoutMs ?? (ceiling > 1000 ? 180_000 : 90_000),
+        })
+        if (res.success) {
+          if (!wasTruncated(res)) return res
+          break // truncated: escalate the ceiling rather than retrying as-is
+        }
+        // Auth and budget failures will not fix themselves on a retry,
+        // and every remaining call in the run will hit the same wall.
+        if (FATAL_CODES.has(res.code)) throw new FatalProbeError(res.message)
+        lastFailure = res
+      }
+      if (attempt === 0) ceiling = Math.max(ceiling * 8, 4000)
+    }
+    return (
+      lastFailure ?? {
+        success: false as const,
+        code: 500,
+        message: `truncated at ${ceiling} tokens (model reasons before answering)`,
+      }
+    )
+  }
 }
 
 export async function runQuizProbe({
@@ -465,6 +548,7 @@ export async function runQuizProbe({
   bank,
   items,
   concurrency = 6,
+  maxCostUsd,
   onProgress,
 }: {
   apiKey: string
@@ -472,18 +556,74 @@ export async function runQuizProbe({
   bank: QuizBank
   items: QuizItem[]
   concurrency?: number
+  /**
+   * Stop asking once this model has cost this much. Per-call cost varies
+   * by ~50x across a cohort — a deep-research model runs a search pass
+   * per question, so 215 questions can cost more than the entire rest of
+   * the run. Without a cap, one slug in the cohort sets the budget.
+   */
+  maxCostUsd?: number
   onProgress?: (done: number, total: number) => void
 }): Promise<{ probe: QuizProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
   let done = 0
+  let capped = false
+
+  /**
+   * Price the model on ONE question before committing to the rest.
+   *
+   * A running cost cap cannot contain a model whose calls are expensive:
+   * with 8 questions in flight, perplexity/sonar-deep-research blew
+   * through a $2 cap to $10.60 and still answered only 14 of 215, because
+   * each call runs its own research pass. Paying five times the cap for a
+   * curve too sparse to fit is the worst of both outcomes.
+   *
+   * So project from the first call and decline the model outright when it
+   * can't be measured within budget. Worst case is now one call over.
+   */
+  let firstCallUsd: number | undefined
+  if (maxCostUsd !== undefined && items.length > 0) {
+    const probe = await ask(quizPrompt(items[0], bank.n_options), 0)
+    firstCallUsd = probe.success ? (probe.usage?.cost ?? 0) : 0
+    cost += firstCallUsd
+    const projected = firstCallUsd * items.length
+    if (projected > maxCostUsd) {
+      return {
+        probe: {
+          n_options: bank.n_options,
+          buckets: [],
+          n_questions: items.length,
+          n_answered: 0,
+          n_refused: 0,
+          n_errored: 0,
+          overall_accuracy: null,
+          estimate: null,
+          estimate_reason: "too-expensive",
+          first_call_usd: firstCallUsd,
+        },
+        cost,
+      }
+    }
+  }
 
   const answers = await pMap(
     items,
     async (item): Promise<QuizAnswer> => {
+      if (maxCostUsd !== undefined && cost >= maxCostUsd) {
+        capped = true
+        return {
+          item_id: item.id,
+          month: item.month,
+          picked: null,
+          correct: false,
+          error: "cost cap reached",
+        }
+      }
       // Temperature 0: we want the model's modal belief, not a sample of
       // its uncertainty. Sampling noise would blur the decay curve.
-      const res = await askOnce({ apiKey, model }, quizPrompt(item, bank.n_options), 0)
+      const res = await ask(quizPrompt(item, bank.n_options), 0)
       done++
       onProgress?.(done, items.length)
       if (!res.success) {
@@ -504,11 +644,20 @@ export async function runQuizProbe({
   const buckets = bucketAnswers(answers)
   const nAnswered = buckets.reduce((a, b) => a + b.n, 0)
   const nCorrect = buckets.reduce((a, b) => a + b.correct, 0)
-  const { estimate, reason } = estimateCutoff(buckets, bank.n_options)
+  // A probe that mostly failed is not a curve. Fitting one anyway
+  // produces a plausible month off a handful of surviving buckets and
+  // nothing in the output says the model barely answered.
+  const answerRate = items.length === 0 ? 0 : nAnswered / items.length
+  const { estimate, reason } =
+    answerRate < 0.6
+      ? { estimate: null, reason: "too-many-failures" as const }
+      : estimateCutoff(buckets, bank.n_options)
 
   return {
     probe: {
       n_options: bank.n_options,
+      ...(capped ? { cost_capped: true } : {}),
+      ...(firstCallUsd !== undefined ? { first_call_usd: firstCallUsd } : {}),
       buckets,
       n_questions: items.length,
       n_answered: nAnswered,
@@ -554,6 +703,7 @@ export async function runSelfReportProbe({
   concurrency?: number
 }): Promise<{ probe: SelfReportProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
 
   async function series(prompts: string[]): Promise<SelfReportSeries> {
@@ -566,7 +716,7 @@ export async function runSelfReportProbe({
         // Temperature 1: here we DO want the distribution — the spread
         // across samples is what distinguishes a model that knows its
         // cutoff from one that is confabulating a plausible-looking date.
-        const res = await askOnce({ apiKey, model }, prompt, 1)
+        const res = await ask(prompt, 1)
         if (!res.success) return null
         cost += res.usage?.cost ?? 0
         return parseMonthAnswer(res.text)
@@ -604,6 +754,7 @@ export async function runIdentityProbe({
   concurrency?: number
 }): Promise<{ probe: IdentityProbe; cost: number }> {
   const { default: pMap } = await import("p-map")
+  const ask = makeAsker({ apiKey, model })
   let cost = 0
   const jobs = IDENTITY_PROMPTS.flatMap((p) =>
     Array.from({ length: samplesPerPhrasing }, () => p)
@@ -611,7 +762,7 @@ export async function runIdentityProbe({
   const results = await pMap(
     jobs,
     async (prompt) => {
-      const res = await askOnce({ apiKey, model }, prompt, 1)
+      const res = await ask(prompt, 1)
       if (!res.success) return null
       cost += res.usage?.cost ?? 0
       const raw = parseAnswerField(res.text) ?? res.text

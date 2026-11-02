@@ -18,6 +18,8 @@
  *   --spec-judge anthropic/claude-sonnet-4.6
  *   --concurrency-gen  4
  *   --concurrency-eval 4
+ *   --provider openrouter|vercel   route the whole cohort (default: per model, else openrouter)
+ *                         per-model: `--models a@vercel,b` — judges always use OpenRouter
  *   --dry-run             print the plan and exit without spending tokens
  *
  * Output lives under ./results/<run-id>/ — one JSON file per (brief,model)
@@ -26,7 +28,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, unlinkSync } from "node:fs"
 import { resolve, join } from "node:path"
 import pc from "picocolors"
-import { loadEnv, requireKey } from "./env.ts"
+import { loadEnv, requireKey, getVercelKey } from "./env.ts"
 import {
   filterModels,
   DEFAULT_JUDGE_MODEL,
@@ -40,6 +42,8 @@ import { evaluateRun, makeCaches } from "./evaluate.ts"
 import { getKeyUsage } from "./openrouter.ts"
 import {
   DEFAULT_BANK_PATH,
+  DEFAULT_MONTH_GAP,
+  bankHash,
   QuizBankError,
   itemsForMonths,
   loadQuizBank,
@@ -47,6 +51,7 @@ import {
   type QuizBank,
 } from "./cutoff-quiz.ts"
 import {
+  FatalProbeError,
   runIdentityProbe,
   runQuizProbe,
   runSelfReportProbe,
@@ -99,7 +104,7 @@ async function cmdRun(args: Args) {
   const concurrencyGen = Number(args["concurrency-gen"] ?? process.env.GENERATE_CONCURRENCY ?? 4)
   const concurrencyEval = Number(args["concurrency-eval"] ?? process.env.EVAL_CONCURRENCY ?? 4)
 
-  const briefs = getBriefs({
+  let briefs = getBriefs({
     ids: list(args.briefs),
     sectors: list(args.sectors),
   })
@@ -114,6 +119,24 @@ async function cmdRun(args: Args) {
       process.exit(1)
     }
     modelIdsOverride = preset
+  }
+  // Per-model gateway: `slug@vercel` / `slug@openrouter` in --models or a
+  // preset, `--provider vercel|openrouter` for the whole cohort, else the
+  // catalog's `provider`, else OpenRouter. The suffix is stripped here so
+  // ids in results/ and the cache stay bare slugs.
+  const providerOf = new Map<string, "openrouter" | "vercel">()
+  if (modelIdsOverride) {
+    modelIdsOverride = modelIdsOverride.map((raw) => {
+      const m = raw.match(/^(.+)@(openrouter|vercel)$/)
+      if (!m) return raw
+      providerOf.set(m[1], m[2] as "openrouter" | "vercel")
+      return m[1]
+    })
+  }
+  const cohortProvider = args.provider as string | undefined
+  if (cohortProvider !== undefined && cohortProvider !== "openrouter" && cohortProvider !== "vercel") {
+    console.error(pc.red(`--provider must be "openrouter" or "vercel", got: ${cohortProvider}`))
+    process.exit(1)
   }
   const models = filterModels({
     ids: modelIdsOverride,
@@ -139,6 +162,25 @@ async function cmdRun(args: Args) {
   }
   if (models.length === 0) {
     console.error(pc.red("No models selected."))
+    process.exit(1)
+  }
+
+  for (const m of models) {
+    m.provider =
+      providerOf.get(m.id) ?? (cohortProvider as "openrouter" | "vercel" | undefined) ?? m.provider ?? "openrouter"
+  }
+  // Fail before spending anything on OpenRouter if a Vercel key is needed
+  // and missing.
+  const vercelModels = models.filter((m) => m.provider === "vercel")
+  const vercelKey = vercelModels.length ? getVercelKey() : null
+  if (vercelModels.length && !vercelKey) {
+    console.error(
+      pc.red(
+        `Routed to Vercel: ${vercelModels.map((m) => m.id).join(", ")}.\n` +
+          "Set VERCEL_AI_GATEWAY_KEY in .env (the OPENROUTER_API_KEY does not work against Vercel),\n" +
+          "or drop the @vercel / --provider vercel routing."
+      )
+    )
     process.exit(1)
   }
 
@@ -179,6 +221,11 @@ async function cmdRun(args: Args) {
       )
       process.exit(1)
     }
+    // Without an explicit subset, extend the run on its own briefs, not
+    // on the whole bank.
+    if (!args.briefs && !args.sectors) {
+      briefs = BRIEFS.filter((b) => existingMeta!.brief_ids.includes(b.id))
+    }
   }
 
   mkdirSync(join(runDir, "runs"), { recursive: true })
@@ -210,9 +257,11 @@ async function cmdRun(args: Args) {
   console.log(pc.bold(pc.cyan(`\nSignals Benchmark — ${runId}`)))
   console.log(
     pc.dim(
-      `  ${briefs.length} briefs · ${models.length} models · judge: ${judgeModel} · spec: ${specJudge}`
+      `  ${briefs.length} briefs · ${models.length} models · judge: ${effectiveJudge} · spec: ${effectiveSpec}`
     )
   )
+  const onVercel = models.filter((m) => m.provider === "vercel").length
+  if (onVercel) console.log(pc.dim(`  gateway: ${onVercel} via Vercel, ${models.length - onVercel} via OpenRouter`))
   console.log(pc.dim(`  results → ${runDir}\n`))
 
   if (args["dry-run"]) {
@@ -273,7 +322,13 @@ async function cmdRun(args: Args) {
         done++
         return
       }
-      const run = await generateForBrief({ apiKey, brief, model: model.id })
+      const provider = model.provider ?? "openrouter"
+      const run = await generateForBrief({
+        apiKey: provider === "vercel" ? vercelKey! : apiKey,
+        brief,
+        model: model.id,
+        provider,
+      })
       runs.push(run)
       done++
       const status = run.error
@@ -428,8 +483,12 @@ async function cmdRun(args: Args) {
       )
     )
   }
+  // Score on every brief of the run, not only the --briefs subset of
+  // this invocation: a brief without its definition gets no coverage.
   const scores = scoreModels({
-    briefs,
+    briefs: intoExistingRun
+      ? BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
+      : briefs,
     runs: allRuns,
     evaluations: allEvaluations,
   })
@@ -514,8 +573,11 @@ async function cmdResume(args: Args) {
   }
   const meta: BenchmarkRun = JSON.parse(readFileSync(metaPath, "utf-8"))
 
-  const newJudge = (args.judge as string) || DEFAULT_JUDGE_MODEL
-  const newSpec = (args["spec-judge"] as string) || DEFAULT_SPECIFICITY_JUDGE
+  // Default to the run's own judges: resuming on another judge would
+  // mix incompatible verdicts.
+  const newJudge = (args.judge as string) || meta.judge_model || DEFAULT_JUDGE_MODEL
+  const newSpec =
+    (args["spec-judge"] as string) || meta.specificity_judge || DEFAULT_SPECIFICITY_JUDGE
   const concurrencyEval = Number(args["concurrency-eval"] ?? process.env.EVAL_CONCURRENCY ?? 4)
 
   const briefs = BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
@@ -698,10 +760,13 @@ async function cmdReport(args: Args) {
  *   --quiz <path>       quiz bank (default: data/cutoff-quiz.json)
  *   --from / --to       restrict the month window
  *   --per-month <n>     cap questions per month (default: all in the bank)
+ *   --gap <n>           months between an item and its wrong answers (default 9)
  *   --no-self-report    skip the "what month is it" probe
  *   --no-identity       skip the "what model are you" probe
  *   --refresh           re-probe models that already have a result file
  *   --concurrency <n>   questions in flight per model (default 6)
+ *   --max-cost-per-model <usd>  stop a model early if it gets expensive (default 2)
+ *   --model-timeout <min>       give up on a model that stalls (default 20)
  */
 async function cmdCutoff(args: Args) {
   loadEnv()
@@ -767,7 +832,9 @@ async function cmdCutoff(args: Args) {
     if (typeof args.to === "string" && monthOrdinal(m) > monthOrdinal(args.to)) return false
     return true
   })
-  let items = itemsForMonths(bank, windowMonths)
+  const monthGap = Number(args.gap ?? DEFAULT_MONTH_GAP)
+  const quizHash = bankHash(bank)
+  let items = itemsForMonths(bank, windowMonths, monthGap)
   const perMonth = args["per-month"] ? Number(args["per-month"]) : undefined
   if (perMonth) {
     const taken = new Map<string, number>()
@@ -786,12 +853,14 @@ async function cmdCutoff(args: Args) {
   const withSelfReport = !args["no-self-report"]
   const withIdentity = !args["no-identity"]
   const concurrency = Number(args.concurrency ?? 6)
+  const maxCostUsd = Number(args["max-cost-per-model"] ?? 2)
+  const modelTimeoutMs = Number(args["model-timeout"] ?? 20) * 60_000
   const cutoffDir = join(runDir, "cutoff")
 
   console.log(pc.bold(pc.cyan(`\nKnowledge cutoff — ${runId ?? "standalone"}`)))
   console.log(
     pc.dim(
-      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way) · quiz ${bank.version}`
+      `  ${models.length} models · ${items.length} questions (${windowMonths.length} months, ${bank.n_options}-way, ${monthGap}-month gap) · quiz ${bank.version}#${quizHash}`
     )
   )
   console.log(
@@ -815,33 +884,98 @@ async function cmdCutoff(args: Args) {
     const path = join(cutoffDir, `${model.replace(/\//g, "_")}.json`)
     if (!args.refresh && existsSync(path)) {
       try {
-        results.push(JSON.parse(readFileSync(path, "utf-8")) as ModelCutoff)
-        console.log(pc.dim(`  ${model} — reused`))
-        continue
+        const prior = JSON.parse(readFileSync(path, "utf-8")) as ModelCutoff
+        // Only reuse a result that sat the SAME exam. Adding months to
+        // the bank changes every item — a question's wrong answers are
+        // drawn from the whole event pool — so a row probed against an
+        // older bank is not comparable with a fresh one, and silently
+        // mixing them would put two different measurements in one chart.
+        const sameQuiz =
+          prior.quiz_hash === quizHash && prior.month_gap === monthGap
+        if (sameQuiz) {
+          results.push(prior)
+          console.log(pc.dim(`  ${model} — reused`))
+          continue
+        }
+        console.log(
+          pc.yellow(
+            `  ${model} — re-probing: answered quiz ${prior.quiz_version}#${prior.quiz_hash ?? "?"}/gap ${prior.month_gap}, current is ${bank.version}#${quizHash}/gap ${monthGap}`
+          )
+        )
       } catch {
         /* corrupt file → re-probe */
       }
     }
 
-    process.stdout.write(`  ${pc.cyan(model)} … `)
     let cost = 0
-    const { probe: quiz, cost: quizCost } = await runQuizProbe({
-      apiKey,
-      model,
-      bank,
-      items,
-      concurrency,
-    })
+    // Per-question progress. A 215-question probe against a slow model
+    // is otherwise 15 minutes of silence, indistinguishable from a hang —
+    // which is exactly how the first cohort run looked.
+    const tick = (done: number, total: number) => {
+      if (done % 25 !== 0 && done !== total) return
+      process.stdout.write(`\r  ${pc.cyan(model)} … ${done}/${total}`.padEnd(60))
+    }
+    process.stdout.write(`  ${pc.cyan(model)} … `)
+
+    /**
+     * One model must not be able to hang a 34-model run. Whatever it has
+     * answered by the deadline is kept; the row is marked and the run
+     * moves on.
+     */
+    let timedOut = false
+    const deadline = new Promise<null>((resolve) =>
+      setTimeout(() => {
+        timedOut = true
+        resolve(null)
+      }, modelTimeoutMs).unref()
+    )
+    let quizResult: Awaited<ReturnType<typeof runQuizProbe>> | null
+    try {
+      quizResult = await Promise.race([
+        runQuizProbe({
+          apiKey,
+          model,
+          bank,
+          items,
+          concurrency,
+          maxCostUsd,
+          onProgress: tick,
+        }),
+        deadline,
+      ])
+    } catch (e) {
+      if (e instanceof FatalProbeError) {
+        console.log(
+          `\r  ${pc.cyan(model)} … ${pc.red("aborted")}`.padEnd(60) +
+            `\n\n${pc.red("Stopping: " + e.message)}\n` +
+            pc.dim(
+              `  ${results.length} model(s) completed and saved. Fix the key, then re-run the same command — finished models are reused.`
+            )
+        )
+        break
+      }
+      throw e
+    }
+    if (!quizResult) {
+      console.log(
+        `\r  ${pc.cyan(model)} … ${pc.red(`timed out after ${modelTimeoutMs / 60_000}m — skipped`)}`.padEnd(70)
+      )
+      continue
+    }
+    const { probe: quiz, cost: quizCost } = quizResult
     cost += quizCost
 
+    // The remaining probes share the model's budget — capping only the
+    // quiz let 50 aux calls run uncapped on top of it.
+    const remaining = Math.max(0, maxCostUsd - cost)
     let self_report: SelfReportProbe | undefined
-    if (withSelfReport) {
+    if (withSelfReport && remaining > 0.05 && quiz.estimate_reason !== "too-expensive") {
       const r = await runSelfReportProbe({ apiKey, model, concurrency })
       self_report = r.probe
       cost += r.cost
     }
     let identity: IdentityProbe | undefined
-    if (withIdentity) {
+    if (withIdentity && maxCostUsd - cost > 0.05 && quiz.estimate_reason !== "too-expensive") {
       const r = await runIdentityProbe({ apiKey, model, concurrency })
       identity = r.probe
       cost += r.cost
@@ -850,20 +984,43 @@ async function cmdCutoff(args: Args) {
     const row: ModelCutoff = {
       model,
       probed_at: new Date().toISOString(),
+      quiz_version: bank.version,
+      quiz_hash: quizHash,
+      month_gap: monthGap,
       quiz,
       ...(self_report ? { self_report } : {}),
       ...(identity ? { identity } : {}),
       cost_usd: cost,
     }
     results.push(row)
-    writeFileSync(path, JSON.stringify(row, null, 2))
+    // A probe that mostly failed is not a result worth keeping: cached,
+    // it would be reused by every later run and never retried, because
+    // reuse keys on the quiz fingerprint rather than on whether the
+    // measurement worked.
+    if (quiz.estimate_reason === "too-many-failures") {
+      console.log(
+        pc.dim(`     not cached — re-run to retry (${quiz.n_answered}/${quiz.n_questions} answered)`)
+      )
+    } else {
+      writeFileSync(path, JSON.stringify(row, null, 2))
+    }
 
     const est = quiz.estimate
       ? pc.green(quiz.estimate.month)
       : pc.yellow(quiz.estimate_reason ?? "no estimate")
     const said = self_report?.cutoff.median ? pc.dim(` · says ${self_report.cutoff.median}`) : ""
     const refused = quiz.n_refused > 0 ? pc.dim(` · ${quiz.n_refused} unparsed`) : ""
-    console.log(`${est}${said}${refused}${pc.dim(` · $${cost.toFixed(4)}`)}`)
+    const capped = quiz.cost_capped
+      ? pc.yellow(` · CAPPED at $${maxCostUsd} after ${quiz.n_answered}/${quiz.n_questions}`)
+      : quiz.estimate_reason === "too-expensive"
+        ? pc.yellow(
+            ` · SKIPPED: $${(quiz.first_call_usd ?? 0).toFixed(3)}/question projects to $${((quiz.first_call_usd ?? 0) * quiz.n_questions).toFixed(0)} > $${maxCostUsd} cap`
+          )
+        : ""
+    process.stdout.write("\r".padEnd(1))
+    console.log(
+      `  ${pc.cyan(model)} … ${est}${said}${refused}${capped}${pc.dim(` · $${cost.toFixed(4)}`)}`.padEnd(70)
+    )
   }
 
   const usageAtEnd = await getKeyUsage(apiKey)
@@ -881,6 +1038,15 @@ async function cmdCutoff(args: Args) {
       ? { billed_actual_usd: Math.max(0, usageAtEnd - usageAtStart) }
       : {}),
   }
+  const mixed = [...new Set(results.map((r) => `${r.quiz_hash}/${r.month_gap}`))]
+  if (mixed.length > 1) {
+    console.log(
+      pc.yellow(
+        `  ⚠ report mixes quizzes (${mixed.join(", ")}) — rows are not comparable. Re-run with --refresh.`
+      )
+    )
+  }
+
   const outPath = join(runDir, "cutoff.json")
   writeFileSync(outPath, JSON.stringify(report, null, 2))
 
