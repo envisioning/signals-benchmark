@@ -32,6 +32,7 @@
     "bench": "node --experimental-strip-types --no-warnings src/cli.ts run",
     "bench:resume": "node --experimental-strip-types --no-warnings src/cli.ts resume",
     "bench:report": "node --experimental-strip-types --no-warnings src/cli.ts report",
+    "bench:refresh": "node --experimental-strip-types --no-warnings src/cli.ts refresh",
     "bench:list": "node --experimental-strip-types --no-warnings src/cli.ts list",
     "bench:publish": "node --experimental-strip-types --no-warnings src/publish.ts",
     "cutoff": "node --experimental-strip-types --no-warnings src/cli.ts cutoff",

@@ -18,7 +18,7 @@ Each model is run against a frozen suite of **12 briefs** spanning healthcare, f
 |---|---:|---|---|
 | **Verifiability** | 0.40 | Is the underlying *evidence* claim real? | Web-grounded judge classifies into one of 6 buckets: grounded / speculative / future / indicative / dubious / fabricated. The `future` bucket protects forward-looking foresight from being marked as hallucination. |
 | **Specificity** | 0.30 | Named actors? Concrete events? No hype adjectives? | Separate non-grounded judge against an explicit writing rubric — different vendor from the verifier to reduce judge-family bias. |
-| **Currency** | 0.15 | How recent is the supporting evidence? | Newest source date from the verifier's annotations, passed through a decay curve. |
+| **Currency** | 0.15 | How recent is the supporting evidence, today? | Newest source date from the verifier's annotations, measured against the scoring day and passed through a decay curve. Sources dated after the generation are clamped to the generation time. |
 | **Coverage** | 0.15 | Breadth across the brief's categories + uniqueness vs. the cohort | Mean of category-balance and unique-share (token-Jaccard < 0.3 vs. every other model's signals on the same brief). |
 
 The composite is a weighted mean. **Per-axis sub-scores are emitted alongside** — if you weight things differently, re-compute from the raw JSON without re-running anything.
@@ -59,6 +59,17 @@ Output lands in `results/<run-id>/`:
 ---
 
 ## Common workflows
+
+### Quarterly refresh (the baseline is today)
+
+Currency is scored against the day the leaderboard is scored, not the day a model wrote its signals. A row generated in May loses currency every month after, and the report names rows older than 90 days as stale. The fix is a new generation:
+
+```bash
+pnpm bench:refresh --from-run <previous-run-id> --dry-run   # plan, no spend
+pnpm bench:refresh --from-run <previous-run-id> --publish
+```
+
+It extends the cutoff quiz bank to the last complete month, regenerates every model in the cohort as a new run (`<today>-refresh`, never `--into`), probes the cutoffs, and publishes. Name the cohort with `--from-run`, `--preset` or `--models`. Commit `data/cutoff-quiz.json` after it grows.
 
 ### Add a new model to an existing run (cheap!)
 

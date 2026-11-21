@@ -9,7 +9,8 @@
  * Composite weights:
  *   verifiability 0.40 — substance of the claim
  *   specificity   0.30 — writing quality / hype resistance
- *   currency      0.15 — recency of supporting evidence
+ *   currency      0.15 — recency of supporting evidence, as of the
+ *                        scoring day (see currency.ts)
  *   coverage      0.15 — breadth across categories + uniqueness
  *
  * These are deliberate: substance > form > recency ≈ breadth. Adjust
@@ -22,7 +23,7 @@ import type {
   ModelRun,
   ModelScore,
 } from "./types.ts"
-import { currencyScore } from "./evaluate.ts"
+import { currencyScore } from "./currency.ts"
 
 export const WEIGHTS = {
   verifiability: 0.4,
@@ -124,10 +125,13 @@ export function scoreModels({
   briefs,
   runs,
   evaluations,
+  asOf = Date.now(),
 }: {
   briefs: Brief[]
   runs: ModelRun[]
   evaluations: ModelEvaluation[]
+  /** The scoring day for currency. Default: now. */
+  asOf?: number
 }): ModelScore[] {
   const briefById = new Map(briefs.map((b) => [b.id, b]))
   const runByBriefModel = new Map<string, ModelRun>()
@@ -161,6 +165,7 @@ export function scoreModels({
     const compositeAcc: number[] = []
     let nSignalsTotal = 0
     let briefsCovered = 0
+    let oldestGeneration: string | undefined
 
     for (const bid of briefIds) {
       const run = runByBriefModel.get(`${bid}::${model}`)
@@ -169,18 +174,21 @@ export function scoreModels({
 
       const verifiability = Math.round(mean(ev.evaluations.map((e) => e.verifiability.score)))
       const specificity = Math.round(mean(ev.evaluations.map((e) => e.specificity.score)))
-      // Re-derive currency against the generation time, so runs judged
-      // months apart stay comparable. Falls back to the stored score.
-      const asOf = Date.parse(run.started_at)
+      // Re-derive currency against the scoring day, with sources clamped
+      // to the generation time. Falls back to the stored score.
+      const generatedAt = Date.parse(run.started_at)
       const currency = Math.round(
         mean(
           ev.evaluations.map((e) =>
-            e.currency.newest_source_date && !Number.isNaN(asOf)
-              ? currencyScore(e.currency.newest_source_date, asOf)
+            e.currency.newest_source_date
+              ? currencyScore(e.currency.newest_source_date, { asOf, generatedAt })
               : e.currency.score
           )
         )
       )
+      if (!oldestGeneration || run.started_at < oldestGeneration) {
+        oldestGeneration = run.started_at
+      }
       const coverage = coverageByBrief[bid]?.[model]?.score ?? 0
 
       const composite = Math.round(
@@ -212,6 +220,7 @@ export function scoreModels({
 
     scored.push({
       model,
+      generated_at: oldestGeneration,
       per_brief,
       overall: {
         verifiability: Math.round(mean(vAcc)),

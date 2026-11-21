@@ -37,6 +37,7 @@ import {
 } from "node:fs"
 import { join, resolve } from "node:path"
 import pc from "picocolors"
+import { currencyScore } from "./currency.ts"
 
 // ── Types (kept narrow; mirror the runner's outputs) ─────────────────
 
@@ -51,6 +52,7 @@ type ModelScoreOverall = {
 }
 type ModelScore = {
   model: string
+  generated_at?: string
   per_brief: Record<
     string,
     {
@@ -78,6 +80,7 @@ type Leaderboard = {
     judge_cost_usd?: number
     billed_actual_usd?: number
   }
+  scored_at?: string
   scores: ModelScore[]
 }
 
@@ -89,6 +92,7 @@ type GeneratedSignal = {
 type ModelRun = {
   brief_id: string
   model: string
+  started_at: string
   signals: GeneratedSignal[]
   error?: { code: number; message: string }
 }
@@ -128,6 +132,10 @@ type ModelDetail = {
   model: string
   /** Date label for this benchmark run, matches overview filename. */
   date: string
+  /** The day currency was scored against. */
+  scored_at?: string
+  /** Oldest generation start across this model's briefs. */
+  generated_at?: string
   /** Internal run ID for tracing back to the source run dir. */
   run_id: string
   /** Judge models used — important so consumers can interpret scores. */
@@ -197,12 +205,14 @@ function buildModelDetail({
   modelScore,
   meta,
   date,
+  scoredAt,
   runs,
   evals,
 }: {
   modelScore: ModelScore
   meta: Leaderboard["run"]
   date: string
+  scoredAt?: string
   /** Index keyed by `${brief_id}::${model}` → ModelRun. */
   runs: Map<string, ModelRun>
   /** Same shape, → ModelEvaluation. */
@@ -230,7 +240,15 @@ function buildModelDetail({
         verdict: evalRow?.verifiability.verdict ?? "unknown",
         verifiability_score: evalRow?.verifiability.score ?? 0,
         specificity_score: evalRow?.specificity.score ?? 0,
-        currency_score: evalRow?.currency.score ?? 0,
+        // Same rule as the leaderboard: scored against the scoring day,
+        // sources clamped to the generation time.
+        currency_score:
+          evalRow?.currency.newest_source_date && scoredAt
+            ? currencyScore(evalRow.currency.newest_source_date, {
+                asOf: Date.parse(scoredAt),
+                generatedAt: Date.parse(run.started_at),
+              })
+            : (evalRow?.currency.score ?? 0),
         newest_source_date: evalRow?.currency.newest_source_date,
         judge_comments: evalRow?.verifiability.comments,
         spec_comments: evalRow?.specificity.comments,
@@ -247,6 +265,8 @@ function buildModelDetail({
   return {
     model: modelScore.model,
     date,
+    scored_at: scoredAt,
+    generated_at: modelScore.generated_at,
     run_id: meta.run_id,
     judge_model: meta.judge_model,
     specificity_judge: meta.specificity_judge,
@@ -386,6 +406,7 @@ function main() {
         modelScore,
         meta: overview.run,
         date,
+        scoredAt: overview.scored_at,
         runs,
         evals,
       })
