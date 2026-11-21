@@ -19,6 +19,15 @@
 import { openrouterChat, openrouterEmbed, extractJson } from "./openrouter.ts"
 import { JudgeCache, NullCache, type CacheKey } from "./cache.ts"
 import { currencyScore } from "./currency.ts"
+
+/**
+ * Ceiling for both judges' replies. Without one, OpenRouter reserves
+ * credit for the model's full output limit (65,535 tokens) on every
+ * call, and a balance of a few dollars fails with 402 although each
+ * verdict costs cents (Nov 2026). The replies are short JSON; the
+ * margin covers Gemini's thinking tokens.
+ */
+const JUDGE_MAX_TOKENS = 8_000
 import type {
   Brief,
   GeneratedSignal,
@@ -201,6 +210,7 @@ async function evaluateSignal({
               { role: "user", content: verifySignal(signal) },
             ],
             webSearch: true,
+            maxTokens: JUDGE_MAX_TOKENS,
             timeoutMs: 120_000,
           })
           // Fail closed: a failed call (402 out of credit, dead key) must
@@ -241,6 +251,7 @@ async function evaluateSignal({
             apiKey,
             model: specificityJudge,
             messages: [{ role: "user", content: specificityPrompt(signal) }],
+            maxTokens: JUDGE_MAX_TOKENS,
             timeoutMs: 60_000,
           })
           // Fail closed: a failed call (402 out of credit, dead key) must
