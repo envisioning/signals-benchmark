@@ -8,7 +8,8 @@
  *      genuinely forward-looking claims can't have web evidence yet,
  *      so they're neither punished nor inflated.
  *   2. Currency — newest source date from the judge's annotations,
- *      mapped through a decay curve.
+ *      mapped through a decay curve (src/currency.ts). The score stored
+ *      here is a fallback; score.ts re-scores it against the scoring day.
  *   3. Specificity — a separate, non-grounded judge against the
  *      writing rubric (no vague quantifiers, named actors, etc.).
  *
@@ -17,6 +18,7 @@
  */
 import { openrouterChat, openrouterEmbed, extractJson } from "./openrouter.ts"
 import { JudgeCache, NullCache, type CacheKey } from "./cache.ts"
+import { currencyScore } from "./currency.ts"
 import type {
   Brief,
   GeneratedSignal,
@@ -124,24 +126,6 @@ Signal:
 Title: ${signal.title}
 Summary: ${signal.summary}
 `
-}
-
-/**
- * Months between the newest source and `asOf`. Pass the generation time
- * as `asOf`: measured against the judging time, a model judged months
- * after another scores lower on the same evidence.
- */
-export function currencyScore(newestDateIso?: string, asOf: number = Date.now()): number {
-  if (!newestDateIso) return 0
-  const t = Date.parse(newestDateIso)
-  if (Number.isNaN(t)) return 0
-  const monthsAgo = (asOf - t) / (1000 * 60 * 60 * 24 * 30.44)
-  if (monthsAgo <= 3) return 100
-  if (monthsAgo <= 6) return 85
-  if (monthsAgo <= 12) return 70
-  if (monthsAgo <= 18) return 50
-  if (monthsAgo <= 24) return 30
-  return 10
 }
 
 async function evaluateSignal({

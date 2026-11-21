@@ -9,8 +9,9 @@
 import { writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import pc from "picocolors"
-import type { BenchmarkRun, ModelScore } from "./types.ts"
+import type { BenchmarkRun, Leaderboard, ModelScore } from "./types.ts"
 import { WEIGHTS } from "./score.ts"
+import { STALE_AFTER_DAYS, ageDays } from "./currency.ts"
 
 function pad(s: string, n: number): string {
   if (s.length >= n) return s.slice(0, n)
@@ -24,9 +25,11 @@ function fmt(score: number): string {
 export function renderMarkdown({
   run,
   scores,
+  scoredAt,
 }: {
   run: BenchmarkRun
   scores: ModelScore[]
+  scoredAt: string
 }): string {
   const lines: string[] = []
   lines.push(`# Signals Benchmark Leaderboard`)
@@ -39,6 +42,7 @@ export function renderMarkdown({
   lines.push(`- **Judge (specificity):** \`${run.specificity_judge}\``)
   lines.push(`- **Started:** ${run.started_at}`)
   if (run.finished_at) lines.push(`- **Finished:** ${run.finished_at}`)
+  lines.push(`- **Currency scored as of:** ${scoredAt.slice(0, 10)}`)
   if (run.total_cost_usd !== undefined) {
     lines.push(`- **Generation cost:** $${run.total_cost_usd.toFixed(4)}`)
   }
@@ -49,6 +53,19 @@ export function renderMarkdown({
     lines.push(`- **Actually billed (OpenRouter /auth/key diff):** $${run.billed_actual_usd.toFixed(4)}`)
   }
   lines.push("")
+  // Rows whose signals were generated long before the scoring day lose
+  // currency every month. Name them, so a reader sees why.
+  const asOf = Date.parse(scoredAt)
+  const stale = scores
+    .filter((s) => s.generated_at && ageDays(s.generated_at, asOf) > STALE_AFTER_DAYS)
+    .map((s) => `\`${s.model}\` (generated ${s.generated_at!.slice(0, 10)})`)
+  if (stale.length) {
+    lines.push(
+      `> **Stale generations (older than ${STALE_AFTER_DAYS} days):** ${stale.join(", ")}. ` +
+        `Their currency is scored against ${scoredAt.slice(0, 10)}. Regenerate with \`pnpm bench:refresh\`.`
+    )
+    lines.push("")
+  }
   lines.push(
     `Composite weighting: Verifiability ${WEIGHTS.verifiability} · Specificity ${WEIGHTS.specificity} · Currency ${WEIGHTS.currency} · Coverage ${WEIGHTS.coverage}`
   )
@@ -149,18 +166,21 @@ export function renderConsole({
 export function writeReport({
   run,
   scores,
+  scoredAt,
   outDir,
 }: {
   run: BenchmarkRun
   scores: ModelScore[]
+  /** The day currency was scored against — pass the same asOf as scoreModels. */
+  scoredAt: string
   outDir: string
 }): { mdPath: string; jsonPath: string } {
-  const md = renderMarkdown({ run, scores })
+  const md = renderMarkdown({ run, scores, scoredAt })
   const mdPath = resolve(outDir, "leaderboard.md")
   writeFileSync(mdPath, md, "utf-8")
 
   const jsonPath = resolve(outDir, "leaderboard.json")
-  writeFileSync(jsonPath, JSON.stringify({ run, scores }, null, 2), "utf-8")
+  writeFileSync(jsonPath, JSON.stringify({ run, scored_at: scoredAt, scores } satisfies Leaderboard, null, 2), "utf-8")
 
   return { mdPath, jsonPath }
 }

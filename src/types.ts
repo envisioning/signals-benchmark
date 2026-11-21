@@ -69,6 +69,8 @@ export type ModelEvaluation = {
 
 export type ModelScore = {
   model: string
+  /** Oldest generation start across this model's briefs. */
+  generated_at?: string
   per_brief: Record<
     string,
     {
@@ -111,4 +113,12 @@ export type BenchmarkRun = {
    * :online web-search surcharge isn't always in that field.
    */
   billed_actual_usd?: number
+}
+
+/** leaderboard.json */
+export type Leaderboard = {
+  run: BenchmarkRun
+  /** The day currency was scored against (ISO). Absent before 2026-11. */
+  scored_at?: string
+  scores: ModelScore[]
 }

@@ -6,6 +6,9 @@
  *   report  — re-render the leaderboard from an existing run's JSON
  *             (useful when you tweak weights in score.ts).
  *   cutoff  — estimate each model's knowledge cutoff (see src/cutoff.ts).
+ *   refresh — the quarterly refresh: extend the cutoff quiz bank to the
+ *             last complete month, regenerate the whole cohort as a new
+ *             run, probe cutoffs, and (with --publish) publish it.
  *   list    — print available briefs and models, then exit.
  *
  * Flags (run):
@@ -20,6 +23,7 @@
  *   --concurrency-eval 4
  *   --provider openrouter|vercel   route the whole cohort (default: per model, else openrouter)
  *                         per-model: `--models a@vercel,b` — judges always use OpenRouter
+ *   --run-id   <id>       name for a new run (default: the start timestamp)
  *   --dry-run             print the plan and exit without spending tokens
  *
  * Output lives under ./results/<run-id>/ — one JSON file per (brief,model)
@@ -27,6 +31,8 @@
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, unlinkSync } from "node:fs"
 import { resolve, join } from "node:path"
+import { spawnSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import pc from "picocolors"
 import { loadEnv, requireKey, getVercelKey } from "./env.ts"
 import {
@@ -193,10 +199,20 @@ async function cmdRun(args: Args) {
    * so existing models' rankings reflect the new neighborhood.
    */
   const intoExistingRun = typeof args.into === "string"
+  if (intoExistingRun && typeof args["run-id"] === "string") {
+    console.error(pc.red("--run-id names a NEW run; it cannot go with --into."))
+    process.exit(1)
+  }
   const runId = intoExistingRun
     ? (args.into as string)
-    : new Date().toISOString().replace(/[:.]/g, "-")
+    : typeof args["run-id"] === "string"
+      ? (args["run-id"] as string)
+      : new Date().toISOString().replace(/[:.]/g, "-")
   const runDir = resolve("results", runId)
+  if (!intoExistingRun && existsSync(join(runDir, "meta.json"))) {
+    console.error(pc.red(`Run ${runId} exists. Pick another --run-id, or extend it with --into.`))
+    process.exit(1)
+  }
 
   let existingMeta: BenchmarkRun | undefined
   if (intoExistingRun) {
@@ -485,12 +501,14 @@ async function cmdRun(args: Args) {
   }
   // Score on every brief of the run, not only the --briefs subset of
   // this invocation: a brief without its definition gets no coverage.
+  const scoredAt = new Date()
   const scores = scoreModels({
     briefs: intoExistingRun
       ? BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
       : briefs,
     runs: allRuns,
     evaluations: allEvaluations,
+    asOf: scoredAt.getTime(),
   })
 
   const totalGenCost = allRuns.reduce((acc, r) => acc + (r.cost_usd ?? 0), 0)
@@ -519,7 +537,12 @@ async function cmdRun(args: Args) {
   }
   writeFileSync(join(runDir, "meta.json"), JSON.stringify(finalMeta, null, 2))
 
-  const { mdPath, jsonPath } = writeReport({ run: finalMeta, scores, outDir: runDir })
+  const { mdPath, jsonPath } = writeReport({
+    run: finalMeta,
+    scores,
+    scoredAt: scoredAt.toISOString(),
+    outDir: runDir,
+  })
 
   console.log(renderConsole({ run: finalMeta, scores }))
   console.log(pc.green(`✓ Wrote ${mdPath}`))
@@ -693,7 +716,8 @@ async function cmdResume(args: Args) {
 
   // Phase 3: scoring + report.
   console.log(pc.bold("\nPhase 3: scoring"))
-  const scores = scoreModels({ briefs, runs, evaluations })
+  const scoredAt = new Date()
+  const scores = scoreModels({ briefs, runs, evaluations, asOf: scoredAt.getTime() })
   const usageAtEnd = await getKeyUsage(apiKey)
   const billedActual =
     usageAtStart !== null && usageAtEnd !== null
@@ -715,7 +739,12 @@ async function cmdResume(args: Args) {
       : {}),
   }
   writeFileSync(metaPath, JSON.stringify(finalMeta, null, 2))
-  const { mdPath, jsonPath } = writeReport({ run: finalMeta, scores, outDir: runDir })
+  const { mdPath, jsonPath } = writeReport({
+    run: finalMeta,
+    scores,
+    scoredAt: scoredAt.toISOString(),
+    outDir: runDir,
+  })
   console.log(renderConsole({ run: finalMeta, scores }))
   console.log(pc.green(`✓ Wrote ${mdPath}`))
   console.log(pc.green(`✓ Wrote ${jsonPath}`))
@@ -740,8 +769,14 @@ async function cmdReport(args: Args) {
   const runs = readJsonDir<ModelRun>(join(runDir, "runs"))
   const evaluations = readJsonDir<ModelEvaluation>(join(runDir, "evals"))
   const briefs = BRIEFS.filter((b) => meta.brief_ids.includes(b.id))
-  const scores = scoreModels({ briefs, runs, evaluations })
-  const { mdPath, jsonPath } = writeReport({ run: meta, scores, outDir: runDir })
+  const scoredAt = new Date()
+  const scores = scoreModels({ briefs, runs, evaluations, asOf: scoredAt.getTime() })
+  const { mdPath, jsonPath } = writeReport({
+    run: meta,
+    scores,
+    scoredAt: scoredAt.toISOString(),
+    outDir: runDir,
+  })
   console.log(renderConsole({ run: meta, scores }))
   console.log(pc.green(`✓ Re-rendered ${mdPath}`))
   console.log(pc.green(`✓ Re-rendered ${jsonPath}`))
@@ -1132,6 +1167,108 @@ function cmdList() {
   console.log()
 }
 
+/**
+ * refresh — regenerate the cohort from scratch, so the leaderboard is
+ * scored against today on signals written today. Currency is scored
+ * against the scoring day (src/currency.ts), so a row generated months
+ * ago loses points; this command is how it gets them back.
+ *
+ * Steps, each the existing command in a child process:
+ *   1. cutoff:build — append the months since the bank's last month,
+ *      up to the last complete month
+ *   2. run          — a NEW run (never --into), same cohort and briefs
+ *   3. cutoff       — probe the cohort against the extended bank
+ *   4. bench:publish (only with --publish)
+ *
+ * Cohort: --preset or --models, or --from-run <id> to take the models,
+ * briefs and judges of an earlier run. There is no default: picking the
+ * cohort picks the cost.
+ *
+ * Flags: --run-id (default <today>-refresh), --briefs, --judge,
+ * --spec-judge, --publish, --dry-run (step 1 dry-run + plan, no spend).
+ */
+function cmdRefresh(args: Args) {
+  let models = list(args.models)
+  let briefIds = list(args.briefs)
+  let judge = args.judge as string | undefined
+  let specJudge = args["spec-judge"] as string | undefined
+
+  if (!models && typeof args.preset === "string") {
+    const preset = getPreset(args.preset)
+    if (!preset) {
+      console.error(pc.red(`Unknown preset: ${args.preset}. Available: ${listPresets().join(", ")}`))
+      process.exit(1)
+    }
+    models = preset
+  }
+  if (typeof args["from-run"] === "string") {
+    const metaPath = resolve("results", args["from-run"] as string, "meta.json")
+    if (!existsSync(metaPath)) {
+      console.error(pc.red(`No meta.json at ${metaPath}`))
+      process.exit(1)
+    }
+    const prev = JSON.parse(readFileSync(metaPath, "utf-8")) as BenchmarkRun
+    models ??= prev.models
+    briefIds ??= prev.brief_ids
+    judge ??= prev.judge_model
+    specJudge ??= prev.specificity_judge
+  }
+  if (!models?.length) {
+    console.error(pc.red("Name the cohort: --preset <name>, --models a,b or --from-run <run-id>."))
+    process.exit(1)
+  }
+
+  const runId =
+    typeof args["run-id"] === "string"
+      ? (args["run-id"] as string)
+      : `${new Date().toISOString().slice(0, 10)}-refresh`
+  if (existsSync(resolve("results", runId, "meta.json"))) {
+    console.error(pc.red(`Run ${runId} exists. Pass another --run-id.`))
+    process.exit(1)
+  }
+  const dryRun = Boolean(args["dry-run"])
+
+  const runArgs = ["run", "--run-id", runId, "--models", models.join(",")]
+  if (briefIds?.length) runArgs.push("--briefs", briefIds.join(","))
+  if (judge) runArgs.push("--judge", judge)
+  if (specJudge) runArgs.push("--spec-judge", specJudge)
+
+  const step = (label: string, file: string, stepArgs: string[]) => {
+    console.log(pc.bold(pc.cyan(`\nrefresh: ${label}`)))
+    const script = fileURLToPath(new URL(file, import.meta.url))
+    const r = spawnSync(process.execPath, [...process.execArgv, script, ...stepArgs], {
+      stdio: "inherit",
+    })
+    if (r.status !== 0) {
+      console.error(pc.red(`refresh stopped: ${label} exited with ${r.status ?? r.signal}.`))
+      process.exit(r.status ?? 1)
+    }
+  }
+
+  step("extend the cutoff quiz bank", "./build-quiz.ts", dryRun ? ["--dry-run"] : [])
+
+  if (dryRun) {
+    console.log(pc.bold("\nrefresh plan (not run):"))
+    console.log(`  run:     ${runId}`)
+    console.log(`  models:  ${models.length} — ${models.join(", ")}`)
+    console.log(`  briefs:  ${briefIds?.length ? briefIds.join(", ") : `all ${BRIEFS.length}`}`)
+    console.log(`  judges:  ${judge ?? DEFAULT_JUDGE_MODEL} / ${specJudge ?? DEFAULT_SPECIFICITY_JUDGE}`)
+    console.log(`  publish: ${args.publish ? "yes" : "no (pass --publish)"}`)
+    console.log(pc.yellow("\nDry run — nothing generated or judged."))
+    return
+  }
+
+  step("generate and judge a new run", "./cli.ts", runArgs)
+  step("probe knowledge cutoffs", "./cli.ts", ["cutoff", "--run", runId])
+  if (args.publish) {
+    step("publish", "./publish.ts", ["--run", runId])
+  }
+
+  console.log(pc.green(`\n✓ refresh done: results/${runId}`))
+  console.log(pc.dim("  Commit data/cutoff-quiz.json if the bank grew."))
+  if (!args.publish) console.log(pc.dim(`  Publish with: pnpm bench:publish --run ${runId}`))
+}
+
 // --- main ------------------------------------------------------------------
 
 const { cmd, args } = parseArgs(process.argv.slice(2))
@@ -1143,9 +1280,11 @@ if (cmd === "run") {
   await cmdReport(args)
 } else if (cmd === "cutoff") {
   await cmdCutoff(args)
+} else if (cmd === "refresh") {
+  cmdRefresh(args)
 } else if (cmd === "list") {
   cmdList()
 } else {
-  console.error(`Unknown command: ${cmd}. Try: run | resume | report | cutoff | list`)
+  console.error(`Unknown command: ${cmd}. Try: run | resume | report | cutoff | refresh | list`)
   process.exit(1)
 }

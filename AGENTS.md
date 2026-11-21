@@ -18,6 +18,13 @@
   judge was saved as `dubious`/40 at $0. Judging now throws on a failed call,
   so the run stops. A run that stops on 402 needs credit, then `--into` again:
   finished pairs are kept.
+- **Currency is scored against today.** `scoreModels` and `bench:publish`
+  measure source age against the scoring day (`scored_at` in
+  leaderboard.json) and clamp sources dated after the generation
+  (`src/currency.ts`). Re-running `bench:report` later lowers currency on
+  old generations, by design. Until 2026-11 the baseline was each run's
+  generation time; May rows then read 20-25 currency points high. Keep
+  rows fresh with `pnpm bench:refresh`, not with `--into`.
 - **`cp` resets file times.** Do not select evals by mtime in a run built by
   copying files from another run.
 
