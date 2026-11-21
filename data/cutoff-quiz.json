@@ -1,6 +1,6 @@
 {
   "version": "2026-08-v2",
-  "built_at": "2026-08-31T15:14:44.639Z",
+  "built_at": "2026-11-21T15:09:22.933Z",
   "builder_model": "openai/gpt-5.4:online",
   "verifier_model": "google/gemini-2.5-flash:online",
   "n_options": 8,
@@ -47,7 +47,10 @@
     "2026-04",
     "2026-05",
     "2026-06",
-    "2026-07"
+    "2026-07",
+    "2026-08",
+    "2026-09",
+    "2026-10"
   ],
   "events": [
     {
@@ -2198,6 +2201,126 @@
       "source": {
         "url": "https://pd.jaxa.jp/index_en.html",
         "title": "JAXA Planetary Defense Team"
+      }
+    },
+    {
+      "id": "2026-08-00-icelandic-voters-rejected-resuming",
+      "month": "2026-08",
+      "domain": "world politics or policy",
+      "statement": "Icelandic voters rejected resuming European Union accession negotiations in a national referendum, dealing Prime Minister Kristrún Frostadóttir’s government a major policy defeat.",
+      "source": {
+        "url": "https://www.investing.com/news/economy-news/iceland-votes-in-tight-referendum-on-whether-to-start-eu-membership-talks-4881985",
+        "title": "Iceland rejects EU-accession talks in close-fought referendum By Reuters"
+      }
+    },
+    {
+      "id": "2026-08-01-nasa-launched-the-nancy",
+      "month": "2026-08",
+      "domain": "science, space, or medicine",
+      "statement": "NASA launched the Nancy Grace Roman Space Telescope aboard a SpaceX Falcon Heavy from Kennedy Space Center, beginning its mission to study dark energy and exoplanets.",
+      "source": {
+        "url": "https://www.nasa.gov/news-release/nasas-dark-universe-seeking-nancy-grace-roman-space-telescope-launches/",
+        "title": "NASA’s Dark Universe-Seeking Nancy Grace Roman Space Telescope Launches"
+      }
+    },
+    {
+      "id": "2026-08-02-the-u-s-food",
+      "month": "2026-08",
+      "domain": "business, markets, or technology",
+      "statement": "The U.S. Food and Drug Administration approved Revolution Medicines’ daraxonrasib, the first broad RAS-targeted therapy for metastatic pancreatic cancer, after pivotal trial results doubled survival.",
+      "source": {
+        "url": "https://www.streetinsider.com/Reuters/Revolutions%2Blifesaving%2Bpancreatic%2Bcancer%2Bdrug%2Bwins%2Bspeedy%2BFDA%2Bapproval/26979649.html",
+        "title": "Revolution's lifesaving pancreatic cancer drug wins speedy FDA approval"
+      }
+    },
+    {
+      "id": "2026-08-03-dutch-rider-demi-vollering",
+      "month": "2026-08",
+      "domain": "sport",
+      "statement": "Dutch rider Demi Vollering won the Tour de France Femmes for FDJ–Suez, securing overall victory in the women’s Grand Tour after nine stages.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/2026_in_sports",
+        "title": "2026 in sports"
+      }
+    },
+    {
+      "id": "2026-08-04-romanian-director-florin-erban",
+      "month": "2026-08",
+      "domain": "culture, film, music, or literature",
+      "statement": "Romanian director Florin Șerban’s drama \"You Don't Belong Here\" won the Golden Leopard, the top prize at the Locarno Film Festival.",
+      "source": {
+        "url": "https://en.wikipedia.org/wiki/79th_Locarno_Film_Festival",
+        "title": "79th Locarno Film Festival"
+      }
+    },
+    {
+      "id": "2026-09-00-japan-s-prime-minister",
+      "month": "2026-09",
+      "domain": "world politics or policy",
+      "statement": "Japan’s Prime Minister Sanae Takaichi reshuffled her Cabinet, retaining key ministers as she sought to revive support and press a stronger defense agenda.",
+      "source": {
+        "url": "https://apnews.com/article/5dabfce1d989011ad3448b02db3b6723",
+        "title": "Takaichi shuffles Japan's Cabinet to revive sagging support, keeps key ministers"
+      }
+    },
+    {
+      "id": "2026-09-02-elena-rybakina-defeated-aryna",
+      "month": "2026-09",
+      "domain": "sport",
+      "statement": "Elena Rybakina defeated Aryna Sabalenka in three sets to win the U.S. Open, taking the women’s No. 1 ranking and her first title there.",
+      "source": {
+        "url": "https://apnews.com/article/521adac24c4f6350c07bdd914cd83b97",
+        "title": "Elena Rybakina beats Aryna Sabalenka to win the US Open title and punctuate her rise to No. 1"
+      }
+    },
+    {
+      "id": "2026-10-00-luiz-in-cio-lula",
+      "month": "2026-10",
+      "domain": "world politics or policy",
+      "statement": "Luiz Inácio Lula da Silva won Brazil’s presidential runoff with 51.8% of the vote, defeating Flávio Bolsonaro, who rejected the result and sought annulment.",
+      "source": {
+        "url": "https://apnews.com/article/brazil-election-lula-bolsonaro-runoff-vote-president-e2c9fe8fc4aa3e3675b9a8ec15405d93",
+        "title": "Lula declared winner of Brazil's election, Bolsonaro rejects results | AP News"
+      }
+    },
+    {
+      "id": "2026-10-01-karl-deisseroth-peter-hegemann",
+      "month": "2026-10",
+      "domain": "science, space, or medicine",
+      "statement": "Karl Deisseroth, Peter Hegemann, and Georg Nagel received the Nobel Prize in medicine for optogenetics, enabling researchers to switch neurons on and off with light.",
+      "source": {
+        "url": "https://apnews.com/article/nobel-prizes-2026-winners-99918d839a742def7ae4b135fc88b5e6",
+        "title": "A list of the 2026 Nobel Prize winners | AP News"
+      }
+    },
+    {
+      "id": "2026-10-02-doordash-offered-17-billion",
+      "month": "2026-10",
+      "domain": "business, markets, or technology",
+      "statement": "DoorDash offered $17 billion for Instacart, seeking to combine its logistics network with Instacart’s grocery-delivery technology and retailer relationships.",
+      "source": {
+        "url": "https://apnews.com/article/doordash-instacart-delivery-d6f30f5d18c288eeba6babcb49260e06",
+        "title": "DoorDash will pay $17 billon for Instacart | AP News"
+      }
+    },
+    {
+      "id": "2026-10-03-william-contreras-earned-world",
+      "month": "2026-10",
+      "domain": "sport",
+      "statement": "William Contreras earned World Series MVP after helping Milwaukee beat Tampa Bay in five games, securing the Brewers’ first championship.",
+      "source": {
+        "url": "https://apnews.com/article/59b3754cae2a7f11f3ce477412fb78a6",
+        "title": "Milwaukee's William Contreras wins World Series MVP with .381 average, 10 ABS overturns"
+      }
+    },
+    {
+      "id": "2026-10-04-anne-carson-won-the",
+      "month": "2026-10",
+      "domain": "culture, film, music, or literature",
+      "statement": "Anne Carson won the Nobel Prize in literature for bold, inventive writing that fused classical and modern forms while blurring poetry-prose boundaries.",
+      "source": {
+        "url": "https://apnews.com/article/nobel-prizes-2026-winners-99918d839a742def7ae4b135fc88b5e6",
+        "title": "A list of the 2026 Nobel Prize winners | AP News"
       }
     }
   ]
